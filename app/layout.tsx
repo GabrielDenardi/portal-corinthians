@@ -4,6 +4,7 @@ import { Barlow_Condensed, Inter } from "next/font/google";
 import { Footer } from "@/components/layout/footer";
 import { Header } from "@/components/layout/header";
 import { footerLinkGroups, siteNavigation } from "@/content/home";
+import { CORINTHIANS_CREST_URL } from "@/lib/assets";
 
 import "./globals.css";
 
@@ -26,6 +27,11 @@ export const metadata: Metadata = {
   description:
     "Portal Corinthians reúne notícias, bastidores, próximo jogo e destaques editoriais com uma identidade esportiva forte e contemporânea.",
   keywords: ["Corinthians", "notícias", "futebol", "Portal Corinthians", "próximo jogo"],
+  icons: {
+    icon: CORINTHIANS_CREST_URL,
+    shortcut: CORINTHIANS_CREST_URL,
+    apple: CORINTHIANS_CREST_URL,
+  },
 };
 
 export default function RootLayout({

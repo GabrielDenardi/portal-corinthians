@@ -14,7 +14,7 @@ export interface NewsCardProps {
 const wrapperClasses = {
   vertical: "flex flex-col gap-5",
   horizontal: "grid gap-5 md:grid-cols-[minmax(0,1fr)_1.05fr] md:items-start",
-  compact: "grid grid-cols-[120px_minmax(0,1fr)] gap-4",
+  compact: "grid grid-cols-[96px_minmax(0,1fr)] gap-4 sm:grid-cols-[104px_minmax(0,1fr)]",
 };
 
 const mediaLayout = {

@@ -1,8 +1,10 @@
+import Image from "next/image";
 import type { MatchInfo } from "@/content/home";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRightIcon, CalendarIcon, ShieldIcon, TrophyIcon } from "@/components/ui/icons";
+import { ArrowRightIcon, CalendarIcon, TrophyIcon } from "@/components/ui/icons";
+import { CORINTHIANS_CREST_URL } from "@/lib/assets";
 
 interface MatchCardProps {
   match: MatchInfo;
@@ -57,7 +59,14 @@ export function MatchCard({ match }: MatchCardProps) {
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-white/8 bg-white/4 p-5">
                 <div className="grid size-16 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-white/10 bg-white/6 lg:size-18">
-                  <ShieldIcon className="size-8 text-white" />
+                  <Image
+                    src={CORINTHIANS_CREST_URL}
+                    alt="Escudo do Corinthians"
+                    width={38}
+                    height={38}
+                    className="h-9 w-9 object-contain"
+                    unoptimized
+                  />
                 </div>
                 <div className="min-w-0">
                   <p className="editorial-kicker">Mandante</p>
@@ -69,7 +78,14 @@ export function MatchCard({ match }: MatchCardProps) {
 
               <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-white/8 bg-white/4 p-5 xl:flex-row-reverse">
                 <div className="grid size-16 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-white/10 bg-white/6 lg:size-18">
-                  <ShieldIcon className="size-8 text-white/72" />
+                  <Image
+                    src={CORINTHIANS_CREST_URL}
+                    alt="Escudo do Corinthians"
+                    width={38}
+                    height={38}
+                    className="h-9 w-9 object-contain opacity-70 grayscale"
+                    unoptimized
+                  />
                 </div>
                 <div className="min-w-0 xl:text-right">
                   <p className="editorial-kicker">Visitante</p>

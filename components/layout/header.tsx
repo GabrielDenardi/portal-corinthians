@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -9,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { MenuIcon, XIcon } from "@/components/ui/icons";
 import { SearchInput } from "@/components/ui/search-input";
+import { CORINTHIANS_CREST_URL } from "@/lib/assets";
 import { cn } from "@/lib/cn";
 
 interface HeaderProps {
@@ -26,8 +28,15 @@ export function Header({ navigation }: HeaderProps) {
             href="/"
             className="group inline-flex min-w-0 items-center gap-4 rounded-[var(--radius-full)] pr-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/90 focus-visible:ring-offset-2 focus-visible:ring-offset-app"
           >
-            <span className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-white">
-              PC
+            <span className="grid size-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5">
+              <Image
+                src={CORINTHIANS_CREST_URL}
+                alt="Escudo do Corinthians"
+                width={28}
+                height={28}
+                className="h-7 w-7 object-contain"
+                unoptimized
+              />
             </span>
             <span className="min-w-0">
               <span className="editorial-kicker block text-white/46">Portal</span>
