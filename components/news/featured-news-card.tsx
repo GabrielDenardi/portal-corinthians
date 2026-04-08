@@ -1,8 +1,11 @@
+import Link from "next/link";
+
+import { articleHref } from "@/content/articles";
 import type { FeaturedStory } from "@/content/home";
 
 import { StoryMedia } from "@/components/news/story-media";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonStyles } from "@/components/ui/button";
 import { ArrowRightIcon, ClockIcon, NewspaperIcon } from "@/components/ui/icons";
 
 interface FeaturedNewsCardProps {
@@ -54,10 +57,10 @@ export function FeaturedNewsCard({ story }: FeaturedNewsCardProps) {
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button size="lg">
+              <Link href={articleHref(story)} className={buttonStyles({ size: "lg" })}>
                 Ver matéria
                 <ArrowRightIcon className="size-4" />
-              </Button>
+              </Link>
               <Button variant="ghost" size="lg">
                 Atualizado agora
               </Button>

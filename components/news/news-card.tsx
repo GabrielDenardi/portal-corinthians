@@ -1,8 +1,11 @@
+import Link from "next/link";
+
+import { articleHref } from "@/content/articles";
 import type { NewsItem } from "@/content/home";
 
 import { StoryMedia } from "@/components/news/story-media";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonStyles } from "@/components/ui/button";
 import { ArrowRightIcon, ClockIcon, NewspaperIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
@@ -73,10 +76,14 @@ export function NewsCard({ story, layout = "vertical" }: NewsCardProps) {
         </div>
 
         <div className="mt-5">
-          <Button variant="ghost" size="sm" className="pl-0" aria-label={`Ler matéria: ${story.title}`}>
+          <Link
+            href={articleHref(story)}
+            className={buttonStyles({ variant: "ghost", size: "sm", className: "pl-0" })}
+            aria-label={`Ler matéria: ${story.title}`}
+          >
             Ver matéria
             <ArrowRightIcon className="size-4" />
-          </Button>
+          </Link>
         </div>
       </div>
     </article>
