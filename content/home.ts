@@ -89,9 +89,8 @@ export const footerLinkGroups: FooterGroup[] = [
   {
     title: "Institucional",
     links: [
-      { label: "Política editorial", href: "#footer" },
-      { label: "Fontes e créditos", href: "#footer" },
-      { label: "Contato", href: "#footer" },
+      { label: "Política editorial", href: "/institucional#politica-editorial" },
+      { label: "Fontes e créditos", href: "/institucional#fontes-e-creditos" },
     ],
   },
 ];

@@ -32,10 +32,6 @@ export default function Home() {
               O noticiário do Corinthians organizado com ritmo de redação, leitura rápida e força de
               arquibancada.
             </h1>
-            <p className="type-body-lg mt-6 max-w-3xl text-ink-secondary">
-              A home prioriza o que move o dia: manchete principal, próximo jogo, últimas notícias e
-              editorias com linguagem clara, esportiva e consistente em desktop e mobile.
-            </p>
           </div>
 
           <div className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_400px] xl:items-start">
@@ -67,7 +63,6 @@ export default function Home() {
           <SectionHeading
             eyebrow="Agenda em evidência"
             title="Próximo jogo"
-            description="A cobertura da semana começa pela agenda competitiva: contexto do duelo, leitura pré-jogo e os pontos que merecem atenção antes da bola rolar."
             action={
               <Button variant="ghost">
                 Ver cobertura
@@ -114,7 +109,6 @@ export default function Home() {
           <SectionHeading
             eyebrow="Leitura rápida"
             title="Últimas notícias"
-            description="Uma grade editorial para consumir o essencial sem ruído: títulos fortes, resumo curto, categoria visível e metadata clara."
           />
 
           <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -130,7 +124,6 @@ export default function Home() {
           <SectionHeading
             eyebrow="Cobertura escalável"
             title="Categorias em evidência"
-            description="As editorias usam a mesma gramática visual para acomodar novos módulos sem perder unidade entre futebol, bastidor, clube e torcida."
           />
 
           <div className="mt-8">
@@ -146,7 +139,6 @@ export default function Home() {
               <SectionHeading
                 eyebrow="Editoriais de apoio"
                 title="Mais lidas"
-                description="Bloco secundário para segurar profundidade editorial e reforçar o que teve maior impacto ao longo do dia."
               />
               <div className="mt-8 space-y-5">
                 {mostReadStories.map((story) => (

@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import type { FooterGroup } from "@/content/home";
 
 import { Container } from "@/components/ui/container";
@@ -18,11 +16,6 @@ export function Footer({ groups }: FooterProps) {
             <h2 className="type-h2 mt-4 text-white">
               Cobertura direta, leitura rápida e identidade forte para acompanhar o clube todos os dias.
             </h2>
-            <p className="type-body mt-4 text-ink-secondary">
-              O conteúdo desta primeira versão é editorial e demonstrativo. A arquitetura foi pensada
-              para crescer com páginas de notícia, widgets de jogos, módulos administrativos e novos
-              blocos responsivos sem perder consistência.
-            </p>
           </div>
 
           <div className="grid gap-8 sm:grid-cols-3">
@@ -32,12 +25,14 @@ export function Footer({ groups }: FooterProps) {
                 <ul className="mt-4 space-y-3">
                   {group.links.map((link) => (
                     <li key={link.label}>
-                      <Link
+                      <a
                         href={link.href}
+                        target={link.href.startsWith("http") ? "_blank" : undefined}
+                        rel={link.href.startsWith("http") ? "noreferrer" : undefined}
                         className="type-body text-ink-secondary transition-colors hover:text-white"
                       >
                         {link.label}
-                      </Link>
+                      </a>
                     </li>
                   ))}
                 </ul>
@@ -47,13 +42,39 @@ export function Footer({ groups }: FooterProps) {
         </div>
 
         <div className="mt-10 border-t border-white/8 pt-6">
-          <p className="type-body-sm max-w-4xl text-ink-muted">
-            Conteúdo agregado e curado com foco em notícias, bastidores, próximos jogos e destaques do
-            Corinthians. Fontes, créditos e integrações definitivas serão conectados nas próximas
-            etapas do produto.
-          </p>
+          <div className="flex flex-col gap-2 text-ink-secondary">
+            <p className="type-body-sm">
+              Desenvolvido por{" "}
+              <a
+                href="https://gabrieldenardi.com.br/"
+                target="_blank"
+                rel="noreferrer"
+                className="font-semibold text-white transition-colors hover:text-ink-secondary"
+              >
+                Gabriel Denardi
+              </a>
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <a
+                href="https://gabrieldenardi.com.br/"
+                target="_blank"
+                rel="noreferrer"
+                className="type-body-sm transition-colors hover:text-white"
+              >
+                gabrieldenardi.com.br
+              </a>
+              <a
+                href="https://www.instagram.com/gabriel_denardi_/"
+                target="_blank"
+                rel="noreferrer"
+                className="type-body-sm transition-colors hover:text-white"
+              >
+                Instagram
+              </a>
+            </div>
+          </div>
           <p className="type-caption mt-4 text-ink-muted/80">
-            © {new Date().getFullYear()} Portal Corinthians. Base visual e estrutural em evolução.
+            © {new Date().getFullYear()} Portal Corinthians.
           </p>
         </div>
       </Container>
