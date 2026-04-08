@@ -3,8 +3,8 @@ import type { MatchInfo } from "@/content/home";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowRightIcon, CalendarIcon, TrophyIcon } from "@/components/ui/icons";
-import { CORINTHIANS_CREST_URL } from "@/lib/assets";
+import { ArrowRightIcon, CalendarIcon, ShieldIcon, TrophyIcon } from "@/components/ui/icons";
+import { getClubCrestUrl } from "@/lib/assets";
 
 interface MatchCardProps {
   match: MatchInfo;
@@ -17,7 +17,12 @@ const statusVariant = {
   warning: "status",
 } as const;
 
-export function MatchCard({ match }: MatchCardProps) {
+export async function MatchCard({ match }: MatchCardProps) {
+  const [homeTeamCrest, awayTeamCrest] = await Promise.all([
+    getClubCrestUrl(match.homeTeam),
+    getClubCrestUrl(match.awayTeam),
+  ]);
+
   return (
     <article className="overflow-hidden rounded-[calc(var(--radius-xl)+4px)] border border-white/10 bg-card shadow-[var(--shadow-feature)]">
       <div className="relative overflow-hidden p-6 md:p-8">
@@ -59,14 +64,18 @@ export function MatchCard({ match }: MatchCardProps) {
             <div className="grid gap-4 xl:grid-cols-2">
               <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-white/8 bg-white/4 p-5">
                 <div className="grid size-16 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-white/10 bg-white/6 lg:size-18">
-                  <Image
-                    src={CORINTHIANS_CREST_URL}
-                    alt="Escudo do Corinthians"
-                    width={38}
-                    height={38}
-                    className="h-9 w-9 object-contain"
-                    unoptimized
-                  />
+                  {homeTeamCrest ? (
+                    <Image
+                      src={homeTeamCrest}
+                      alt={`Escudo do ${match.homeTeam}`}
+                      width={38}
+                      height={38}
+                      className="h-9 w-9 object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <ShieldIcon className="size-8 text-white" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="editorial-kicker">Mandante</p>
@@ -78,14 +87,18 @@ export function MatchCard({ match }: MatchCardProps) {
 
               <div className="flex items-center gap-4 rounded-[var(--radius-lg)] border border-white/8 bg-white/4 p-5 xl:flex-row-reverse">
                 <div className="grid size-16 shrink-0 place-items-center rounded-[var(--radius-lg)] border border-white/10 bg-white/6 lg:size-18">
-                  <Image
-                    src={CORINTHIANS_CREST_URL}
-                    alt="Escudo do Corinthians"
-                    width={38}
-                    height={38}
-                    className="h-9 w-9 object-contain opacity-70 grayscale"
-                    unoptimized
-                  />
+                  {awayTeamCrest ? (
+                    <Image
+                      src={awayTeamCrest}
+                      alt={`Escudo do ${match.awayTeam}`}
+                      width={38}
+                      height={38}
+                      className="h-9 w-9 object-contain"
+                      unoptimized
+                    />
+                  ) : (
+                    <ShieldIcon className="size-8 text-white/72" />
+                  )}
                 </div>
                 <div className="min-w-0 xl:text-right">
                   <p className="editorial-kicker">Visitante</p>
