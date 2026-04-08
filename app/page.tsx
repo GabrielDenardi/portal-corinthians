@@ -1,65 +1,175 @@
-import Image from "next/image";
+import { CategoryTabs } from "@/components/news/category-tabs";
+import { FeaturedNewsCard } from "@/components/news/featured-news-card";
+import { MatchCard } from "@/components/news/match-card";
+import { NewsCard } from "@/components/news/news-card";
+import { Button } from "@/components/ui/button";
+import { Container } from "@/components/ui/container";
+import { ArrowRightIcon } from "@/components/ui/icons";
+import { SectionHeading } from "@/components/ui/section-heading";
+import {
+  featuredStory,
+  latestStories,
+  mostReadStories,
+  newsByCategory,
+  newsCategories,
+  secondaryHighlights,
+  spotlightStories,
+  upcomingMatch,
+} from "@/content/home";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="flex-1">
+      <section
+        id="destaque-principal"
+        className="relative overflow-hidden border-b border-white/8 bg-app scroll-mt-28"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(185,28,28,0.22),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.04),transparent_28%)]" />
+        <Container className="relative py-10 md:py-14 xl:py-16">
+          <div className="max-w-4xl">
+            <p className="editorial-kicker">Direto de Itaquera para o torcedor</p>
+            <h1 className="type-display mt-5 max-w-4xl text-balance text-white">
+              O noticiário do Corinthians organizado com ritmo de redação, leitura rápida e força de
+              arquibancada.
+            </h1>
+            <p className="type-body-lg mt-6 max-w-3xl text-ink-secondary">
+              A home prioriza o que move o dia: manchete principal, próximo jogo, últimas notícias e
+              editorias com linguagem clara, esportiva e consistente em desktop e mobile.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_400px] xl:items-start">
+            <FeaturedNewsCard story={featuredStory} />
+
+            <aside className="flex flex-col gap-4">
+              <div className="rounded-[var(--radius-xl)] border border-white/8 bg-card/65 p-5 shadow-[var(--shadow-card)]">
+                <p className="editorial-kicker">Pulso do dia</p>
+                <h2 className="type-h3 mt-4 text-white">Movimentos que puxam a cobertura</h2>
+                <p className="type-body mt-3 text-ink-secondary">
+                  Mercado em observação, Neo Química em alta procura e o time principal ajustando o
+                  ritmo sem bola para chegar mais agressivo ao clássico.
+                </p>
+              </div>
+
+              {secondaryHighlights.map((story) => (
+                <NewsCard key={story.id} story={story} layout="compact" />
+              ))}
+            </aside>
+          </div>
+        </Container>
+      </section>
+
+      <section
+        id="proximo-jogo"
+        className="border-b border-white/8 bg-surface scroll-mt-28"
+      >
+        <Container className="py-14 md:py-16">
+          <SectionHeading
+            eyebrow="Agenda em evidência"
+            title="Próximo jogo"
+            description="A cobertura da semana começa pela agenda competitiva: contexto do duelo, leitura pré-jogo e os pontos que merecem atenção antes da bola rolar."
+            action={
+              <Button variant="ghost">
+                Ver cobertura
+                <ArrowRightIcon className="size-4" />
+              </Button>
+            }
+          />
+
+          <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_0.8fr]">
+            <MatchCard match={upcomingMatch} />
+
+            <div className="rounded-[calc(var(--radius-xl)+4px)] border border-white/8 bg-card/72 p-5 shadow-[var(--shadow-card)]">
+              <p className="editorial-kicker">O que observar</p>
+              <div className="mt-5 space-y-4">
+                <div className="rounded-[var(--radius-lg)] border border-white/8 bg-app/35 p-4">
+                  <p className="type-body-sm text-white">Pressão inicial</p>
+                  <p className="type-body mt-2 text-ink-secondary">
+                    O Corinthians quer os primeiros 20 minutos em bloco alto, com recuperação curta e
+                    aceleração imediata para ocupar área.
+                  </p>
+                </div>
+                <div className="rounded-[var(--radius-lg)] border border-white/8 bg-app/35 p-4">
+                  <p className="type-body-sm text-white">Corredor esquerdo</p>
+                  <p className="type-body mt-2 text-ink-secondary">
+                    A semana indicou mais profundidade naquele lado, explorando amplitude e cruzamento
+                    atrasado como saída.
+                  </p>
+                </div>
+                <div className="rounded-[var(--radius-lg)] border border-white/8 bg-app/35 p-4">
+                  <p className="type-body-sm text-white">Arquibancada</p>
+                  <p className="type-body mt-2 text-ink-secondary">
+                    A atmosfera do estádio deve ser componente ativo da partida, e o portal acompanha o
+                    ambiente desde a abertura dos portões.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+
+      <section id="ultimas" className="border-b border-white/8 bg-app scroll-mt-28">
+        <Container className="py-14 md:py-16">
+          <SectionHeading
+            eyebrow="Leitura rápida"
+            title="Últimas notícias"
+            description="Uma grade editorial para consumir o essencial sem ruído: títulos fortes, resumo curto, categoria visível e metadata clara."
+          />
+
+          <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {latestStories.map((story) => (
+              <NewsCard key={story.id} story={story} layout="vertical" />
+            ))}
+          </div>
+        </Container>
+      </section>
+
+      <section id="categorias" className="border-b border-white/8 bg-surface scroll-mt-28">
+        <Container className="py-14 md:py-16">
+          <SectionHeading
+            eyebrow="Cobertura escalável"
+            title="Categorias em evidência"
+            description="As editorias usam a mesma gramática visual para acomodar novos módulos sem perder unidade entre futebol, bastidor, clube e torcida."
+          />
+
+          <div className="mt-8">
+            <CategoryTabs categories={newsCategories} itemsByCategory={newsByCategory} />
+          </div>
+        </Container>
+      </section>
+
+      <section id="destaques" className="bg-app scroll-mt-28">
+        <Container className="py-14 md:py-16">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_0.92fr]">
+            <div>
+              <SectionHeading
+                eyebrow="Editoriais de apoio"
+                title="Mais lidas"
+                description="Bloco secundário para segurar profundidade editorial e reforçar o que teve maior impacto ao longo do dia."
+              />
+              <div className="mt-8 space-y-5">
+                {mostReadStories.map((story) => (
+                  <NewsCard key={story.id} story={story} layout="horizontal" />
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-[calc(var(--radius-xl)+6px)] border border-white/8 bg-card/72 p-5 shadow-[var(--shadow-card)]">
+              <SectionHeading
+                eyebrow="Em destaque"
+                title="Radar editorial"
+                description="Temas que sustentam continuidade de cobertura e ajudam a distribuir atenção entre campo, gestão e arquibancada."
+              />
+              <div className="mt-8 space-y-4">
+                {spotlightStories.map((story) => (
+                  <NewsCard key={story.id} story={story} layout="compact" />
+                ))}
+              </div>
+            </div>
+          </div>
+        </Container>
+      </section>
+    </main>
   );
 }
