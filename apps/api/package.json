@@ -1,0 +1,47 @@
+{
+  "name": "@portal-corinthians/api",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "start:dev": "tsx watch --tsconfig tsconfig.json src/main.ts",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.11",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.0.11",
+    "@nestjs/platform-express": "^11.0.11",
+    "@nestjs/schedule": "^5.0.1",
+    "@portal-corinthians/contracts": "file:../../packages/contracts",
+    "@prisma/client": "^6.6.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@nestjs/testing": "^11.0.11",
+    "@types/express": "^5.0.1",
+    "@types/node": "^20.17.30",
+    "@types/supertest": "^6.0.3",
+    "eslint": "^9.24.0",
+    "globals": "^15.15.0",
+    "prisma": "^6.6.0",
+    "supertest": "^7.0.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.28.0",
+    "vitest": "^3.0.8",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
