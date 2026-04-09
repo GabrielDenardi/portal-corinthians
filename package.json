@@ -1,26 +1,24 @@
 {
   "name": "portal-corinthians",
-  "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.2.2",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.2",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "postinstall": "npm run build --workspace @portal-corinthians/contracts && npm run prisma:generate --workspace @portal-corinthians/api",
+    "dev": "npm run dev:web",
+    "dev:web": "npm run dev --workspace @portal-corinthians/web",
+    "dev:api": "npm run start:dev --workspace @portal-corinthians/api",
+    "build": "npm run build --workspace @portal-corinthians/contracts && npm run build --workspace @portal-corinthians/api && npm run build --workspace @portal-corinthians/web",
+    "build:web": "npm run build --workspace @portal-corinthians/web",
+    "build:api": "npm run build --workspace @portal-corinthians/api",
+    "lint": "npm run lint --workspace @portal-corinthians/api && npm run lint --workspace @portal-corinthians/web",
+    "lint:web": "npm run lint --workspace @portal-corinthians/web",
+    "lint:api": "npm run lint --workspace @portal-corinthians/api",
+    "test": "npm run test --workspace @portal-corinthians/api",
+    "prisma:generate": "npm run prisma:generate --workspace @portal-corinthians/api",
+    "prisma:migrate": "npm run prisma:migrate --workspace @portal-corinthians/api",
+    "seed": "npm run seed --workspace @portal-corinthians/api"
   }
 }
