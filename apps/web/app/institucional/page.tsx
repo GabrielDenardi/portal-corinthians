@@ -86,7 +86,7 @@ export default function InstitucionalPage() {
           <SectionHeading
             eyebrow="Fontes e créditos"
             title="De onde vêm as informações e os ativos"
-            description="Lista objetiva das referências públicas e técnicas utilizadas pela V2 do portal."
+            description="Lista objetiva das referências públicas e técnicas utilizadas no portal."
           />
 
           <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:items-start">
