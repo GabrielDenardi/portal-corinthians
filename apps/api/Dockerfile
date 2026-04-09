@@ -33,8 +33,8 @@ COPY --from=builder /app/apps/api ./apps/api
 COPY --from=builder /app/packages/contracts ./packages/contracts
 COPY docker/api-entrypoint.sh ./docker/api-entrypoint.sh
 
-RUN chmod +x ./docker/api-entrypoint.sh
+RUN sed -i 's/\r$//' ./docker/api-entrypoint.sh && chmod +x ./docker/api-entrypoint.sh
 
 EXPOSE 4000
 
-CMD ["./docker/api-entrypoint.sh"]
+CMD ["sh", "./docker/api-entrypoint.sh"]

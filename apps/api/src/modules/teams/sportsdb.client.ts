@@ -1,6 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import type { ScheduleMatchRecord } from "../matches/match-source.types";
+import { isCorinthiansMatchup, isCorinthiansTeamName, normalizeTeamName } from "./team-identity";
+
 type SportsDbTeam = {
   idTeam?: string;
   strTeam?: string;
@@ -32,6 +35,7 @@ type SportsDbTeamResponse = {
 
 type SportsDbEventResponse = {
   events?: SportsDbEvent[] | null;
+  results?: SportsDbEvent[] | null;
 };
 
 export interface SportsDbTeamRecord {
@@ -42,20 +46,6 @@ export interface SportsDbTeamRecord {
   sport?: string | null;
   badgeUrl?: string | null;
   alternateNames: string[];
-}
-
-export interface SportsDbMatchRecord {
-  externalId: string;
-  competition: string;
-  round: string;
-  venue: string;
-  kickOff: Date;
-  statusLabel: string;
-  statusTone: "default" | "alert" | "success" | "warning";
-  homeTeamName: string;
-  homeTeamExternalId?: string;
-  awayTeamName: string;
-  awayTeamExternalId?: string;
 }
 
 @Injectable()
@@ -81,7 +71,18 @@ export class SportsDbClient {
 
   async searchTeam(name: string) {
     const data = await this.fetchJson<SportsDbTeamResponse>(`/searchteams.php?t=${encodeURIComponent(name)}`);
-    const team = (data.teams ?? []).find((item) => item.strSport === "Soccer");
+    const teams = (data.teams ?? []).filter((item) => item.strSport === "Soccer" && item.strTeam);
+
+    const team =
+      (isCorinthiansTeamName(name)
+        ? teams.find(
+            (item) =>
+              isCorinthiansTeamName(item.strTeam) &&
+              item.strCountry?.toLowerCase() === "brazil",
+          )
+        : undefined) ??
+      teams.find((item) => normalizeTeamName(item.strTeam!) === normalizeTeamName(name)) ??
+      teams[0];
 
     if (!team?.strTeam) {
       return null;
@@ -98,12 +99,12 @@ export class SportsDbClient {
     } satisfies SportsDbTeamRecord;
   }
 
-  async fetchCorinthiansSchedule() {
+  async fetchCorinthiansSchedule(): Promise<ScheduleMatchRecord[]> {
     const corinthians = await this.searchTeam("Corinthians");
 
-    if (!corinthians?.externalId) {
+    if (!corinthians?.externalId || !isCorinthiansTeamName(corinthians.name)) {
       this.logger.warn("Could not resolve Corinthians in TheSportsDB.");
-      return [] as SportsDbMatchRecord[];
+      return [];
     }
 
     const [next, recent] = await Promise.all([
@@ -111,16 +112,30 @@ export class SportsDbClient {
       this.fetchJson<SportsDbEventResponse>(`/eventslast.php?id=${corinthians.externalId}`),
     ]);
 
-    return [...(next.events ?? []), ...(recent.events ?? [])]
-      .filter((event): event is Required<Pick<SportsDbEvent, "idEvent" | "strHomeTeam" | "strAwayTeam">> & SportsDbEvent =>
-        Boolean(event.idEvent && event.strHomeTeam && event.strAwayTeam),
+    const rawEvents = [...(next.events ?? []), ...(recent.results ?? recent.events ?? [])];
+    const filteredEvents = rawEvents.filter((event) =>
+      isCorinthiansMatchup(event.strHomeTeam, event.strAwayTeam),
+    );
+
+    if (filteredEvents.length !== rawEvents.length) {
+      this.logger.warn(
+        `Discarded ${rawEvents.length - filteredEvents.length} TheSportsDB events that do not involve Corinthians.`,
+      );
+    }
+
+    return filteredEvents
+      .filter(
+        (
+          event,
+        ): event is Required<Pick<SportsDbEvent, "idEvent" | "strHomeTeam" | "strAwayTeam">> &
+          SportsDbEvent => Boolean(event.idEvent && event.strHomeTeam && event.strAwayTeam),
       )
       .map((event) => {
         const kickOff = toSportsDbDate(event.dateEvent, event.strTime);
         const status = mapSportsDbStatus(event.strStatus, kickOff);
 
         return {
-          externalId: event.idEvent!,
+          externalId: `sportsdb:${event.idEvent!}`,
           competition: event.strLeague ?? "Partida em atualização",
           round: event.intRound ? `${event.intRound}ª rodada` : "Rodada em atualização",
           venue: event.strVenue ?? "Local em atualização",
@@ -129,9 +144,13 @@ export class SportsDbClient {
           statusTone: status.tone,
           homeTeamName: event.strHomeTeam!,
           homeTeamExternalId: event.idHomeTeam,
+          homeTeamShortName: null,
+          homeTeamBadgeUrl: null,
           awayTeamName: event.strAwayTeam!,
           awayTeamExternalId: event.idAwayTeam,
-        } satisfies SportsDbMatchRecord;
+          awayTeamShortName: null,
+          awayTeamBadgeUrl: null,
+        } satisfies ScheduleMatchRecord;
       });
   }
 }

@@ -21,5 +21,10 @@ done
 echo "Executando seed inicial..."
 npm run seed --workspace @portal-corinthians/api
 
+echo "Sincronizando agenda do Corinthians..."
+if ! node apps/api/dist/scripts/sync-matches.js; then
+  echo "Falha no sync inicial de partidas. A API seguira no ar e o cron tentara novamente."
+fi
+
 echo "Iniciando API..."
 exec node apps/api/dist/main.js

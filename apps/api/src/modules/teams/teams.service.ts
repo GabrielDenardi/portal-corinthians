@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../../prisma/prisma.service";
 import { SportsDbClient } from "./sportsdb.client";
+import { normalizeTeamName } from "./team-identity";
 
 interface UpsertTeamInput {
   externalId?: string | null;
@@ -124,14 +125,4 @@ export class TeamsService {
 
     return processed;
   }
-}
-
-export function normalizeTeamName(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }

@@ -1,6 +1,6 @@
 import { MatchStatusTone, PrismaClient } from "@prisma/client";
 
-import { articleFixtures, matchFixtures, teamFixtures } from "./fixtures";
+import { articleFixtures, teamFixtures } from "./fixtures";
 
 const prisma = new PrismaClient();
 
@@ -92,44 +92,6 @@ async function main() {
     });
   }
 
-  for (const match of matchFixtures) {
-    const homeTeam = await prisma.team.findUniqueOrThrow({
-      where: { normalizedName: match.homeTeamNormalizedName },
-    });
-    const awayTeam = await prisma.team.findUniqueOrThrow({
-      where: { normalizedName: match.awayTeamNormalizedName },
-    });
-
-    await prisma.match.upsert({
-      where: { externalId: match.externalId },
-      update: {
-        competition: match.competition,
-        round: match.round,
-        venue: match.venue,
-        kickOff: match.kickOff,
-        broadcast: match.broadcast,
-        note: match.note,
-        statusLabel: match.statusLabel,
-        statusTone: toPrismaTone(match.statusTone),
-        homeTeamId: homeTeam.id,
-        awayTeamId: awayTeam.id,
-        syncedAt: new Date(),
-      },
-      create: {
-        externalId: match.externalId,
-        competition: match.competition,
-        round: match.round,
-        venue: match.venue,
-        kickOff: match.kickOff,
-        broadcast: match.broadcast,
-        note: match.note,
-        statusLabel: match.statusLabel,
-        statusTone: toPrismaTone(match.statusTone),
-        homeTeamId: homeTeam.id,
-        awayTeamId: awayTeam.id,
-      },
-    });
-  }
 }
 
 function toPrismaTone(value: "default" | "alert" | "success" | "warning") {

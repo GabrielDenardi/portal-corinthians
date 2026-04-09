@@ -1,10 +1,12 @@
 import type { MatchDTO, MatchScope, NewsTone } from "@portal-corinthians/contracts";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { MatchStatusTone, Prisma } from "@prisma/client";
 
 import { PrismaService } from "../../prisma/prisma.service";
 import { SportsDbClient } from "../teams/sportsdb.client";
 import { TeamsService } from "../teams/teams.service";
+import { getCorinthiansOpponent, isCorinthiansMatchup } from "../teams/team-identity";
+import { EspnFixturesClient } from "./espn-fixtures.client";
 
 type MatchRecord = Prisma.MatchGetPayload<{
   include: { homeTeam: true; awayTeam: true };
@@ -12,20 +14,35 @@ type MatchRecord = Prisma.MatchGetPayload<{
 
 @Injectable()
 export class MatchesService {
+  private readonly logger = new Logger(MatchesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly teamsService: TeamsService,
+    private readonly espnFixturesClient: EspnFixturesClient,
     private readonly sportsDbClient: SportsDbClient,
   ) {}
 
   async syncSchedule() {
-    const events = await this.sportsDbClient.fetchCorinthiansSchedule();
+    const { events, source } = await this.fetchScheduleFromPrimarySource();
+    const validEvents = events.filter((event) =>
+      isCorinthiansMatchup(event.homeTeamName, event.awayTeamName),
+    );
+    const syncedExternalIds = new Set<string>();
     let processed = 0;
 
-    for (const event of events) {
+    for (const event of validEvents) {
       const [homeTeam, awayTeam] = await Promise.all([
-        this.teamsService.resolveTeam(event.homeTeamName, event.homeTeamExternalId),
-        this.teamsService.resolveTeam(event.awayTeamName, event.awayTeamExternalId),
+        this.teamsService.upsertTeam({
+          name: event.homeTeamName,
+          shortName: event.homeTeamShortName,
+          badgeUrl: event.homeTeamBadgeUrl,
+        }),
+        this.teamsService.upsertTeam({
+          name: event.awayTeamName,
+          shortName: event.awayTeamShortName,
+          badgeUrl: event.awayTeamBadgeUrl,
+        }),
       ]);
 
       await this.prisma.match.upsert({
@@ -58,19 +75,28 @@ export class MatchesService {
         },
       });
 
+      syncedExternalIds.add(event.externalId);
       processed += 1;
     }
+
+    if (source === "espn") {
+      await this.pruneStaleMatches(syncedExternalIds);
+    }
+
+    await this.pruneNonCorinthiansMatches();
 
     return processed;
   }
 
   async getUpcomingMatch() {
-    const match = await this.prisma.match.findFirst({
+    const matches = await this.prisma.match.findMany({
       where: { kickOff: { gte: new Date() } },
+      take: 12,
       orderBy: { kickOff: "asc" },
       include: { homeTeam: true, awayTeam: true },
     });
 
+    const match = matches.find((item) => isCorinthiansMatchup(item.homeTeam.name, item.awayTeam.name));
     return match ? toMatchDTO(match) : null;
   }
 
@@ -85,14 +111,81 @@ export class MatchesService {
 
     const matches = await this.prisma.match.findMany({
       where,
-      take: scope === "all" ? 12 : 6,
+      take: scope === "all" ? 24 : 12,
       orderBy: {
         kickOff: scope === "recent" ? "desc" : "asc",
       },
       include: { homeTeam: true, awayTeam: true },
     });
 
-    return matches.map(toMatchDTO);
+    return matches
+      .filter((match) => isCorinthiansMatchup(match.homeTeam.name, match.awayTeam.name))
+      .slice(0, scope === "all" ? 12 : 6)
+      .map(toMatchDTO);
+  }
+
+  private async fetchScheduleFromPrimarySource() {
+    try {
+      const espnEvents = await this.espnFixturesClient.fetchCorinthiansSchedule();
+
+      if (espnEvents.length > 0) {
+        return { source: "espn" as const, events: espnEvents };
+      }
+
+      this.logger.warn("ESPN returned no schedule data. Falling back to TheSportsDB.");
+    } catch (error) {
+      this.logger.warn(
+        `ESPN schedule fetch failed. Falling back to TheSportsDB. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    return {
+      source: "sportsdb" as const,
+      events: await this.sportsDbClient.fetchCorinthiansSchedule(),
+    };
+  }
+
+  private async pruneStaleMatches(syncedExternalIds: Set<string>) {
+    if (syncedExternalIds.size === 0) {
+      return;
+    }
+
+    await this.prisma.match.deleteMany({
+      where: {
+        OR: [
+          { externalId: null },
+          {
+            externalId: {
+              notIn: [...syncedExternalIds],
+            },
+          },
+        ],
+      },
+    });
+  }
+
+  private async pruneNonCorinthiansMatches() {
+    const matches = await this.prisma.match.findMany({
+      include: { homeTeam: true, awayTeam: true },
+    });
+
+    const invalidMatchIds = matches
+      .filter((match) => !isCorinthiansMatchup(match.homeTeam.name, match.awayTeam.name))
+      .map((match) => match.id);
+
+    if (invalidMatchIds.length === 0) {
+      return;
+    }
+
+    await this.prisma.match.deleteMany({
+      where: {
+        id: {
+          in: invalidMatchIds,
+        },
+      },
+    });
   }
 }
 
@@ -139,7 +232,7 @@ function capitalize(value: string) {
 }
 
 function buildMatchNote(homeTeam: string, awayTeam: string) {
-  const opponent = homeTeam === "Corinthians" ? awayTeam : homeTeam;
+  const opponent = getCorinthiansOpponent(homeTeam, awayTeam);
   return `A cobertura do confronto contra ${opponent} cruza momento esportivo, leitura tática e o peso do resultado na sequência do Corinthians.`;
 }
 
