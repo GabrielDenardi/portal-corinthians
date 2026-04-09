@@ -4,11 +4,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "start:tsx": "tsx --tsconfig tsconfig.json src/main.ts",
     "start:dev": "tsx watch --tsconfig tsconfig.json src/main.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push --skip-generate",
     "prisma:migrate": "prisma migrate dev",
     "seed": "tsx prisma/seed.ts"
   },

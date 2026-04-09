@@ -19,6 +19,10 @@
     "test": "npm run test --workspace @portal-corinthians/api",
     "prisma:generate": "npm run prisma:generate --workspace @portal-corinthians/api",
     "prisma:migrate": "npm run prisma:migrate --workspace @portal-corinthians/api",
-    "seed": "npm run seed --workspace @portal-corinthians/api"
+    "seed": "npm run seed --workspace @portal-corinthians/api",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v"
   }
 }

@@ -2,7 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "incremental": false
   },
   "exclude": ["test", "dist", "prisma"]
 }

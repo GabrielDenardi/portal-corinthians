@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Portal Corinthians
 
-## Getting Started
+Monorepo da V2 do Portal Corinthians com:
 
-First, run the development server:
+- `apps/web`: Next.js 16 + Tailwind CSS 4
+- `apps/api`: NestJS + Prisma
+- `packages/contracts`: contratos compartilhados entre frontend e backend
+- `postgres`: banco para artigos, partidas, views e jobs de sync
+
+## Requisitos
+
+- Node.js 20+
+- Docker Desktop
+
+## Ambiente local sem Docker
+
+1. Copie `.env.example` para `.env`
+2. Suba um PostgreSQL local
+3. Rode:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run prisma:migrate
+npm run seed
+npm run dev:api
+npm run dev:web
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Subir tudo com Docker
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+O setup Docker sobe:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `postgres` em `localhost:5432`
+- `api` em `localhost:4000`
+- `web` em `localhost:3000`
 
-## Learn More
+Comando principal:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run docker:up
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Ou diretamente:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+docker compose up --build
+```
 
-## Deploy on Vercel
+Para parar:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run docker:down
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Para limpar volumes e reiniciar o banco do zero:
+
+```bash
+npm run docker:reset
+```
+
+## Variaveis de ambiente
+
+O `docker-compose.yml` ja tem defaults para rodar localmente. Se quiser trocar as chaves externas, crie um arquivo `.env` na raiz com:
+
+```env
+GNEWS_API_KEY=
+THESPORTSDB_API_KEY=3
+```
+
+## Fluxo do Docker
+
+- a API espera o PostgreSQL ficar disponivel
+- aplica o schema com Prisma
+- executa o seed inicial
+- sobe o backend NestJS
+- a web sobe em build standalone do Next.js e consome a API interna do compose
+
+## URLs
+
+- Web: [http://localhost:3000](http://localhost:3000)
+- API health: [http://localhost:4000/health](http://localhost:4000/health)
