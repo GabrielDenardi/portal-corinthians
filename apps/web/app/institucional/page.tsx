@@ -5,7 +5,7 @@ const sourceLinks = [
   {
     label: "GNews",
     href: "https://gnews.io/",
-    note: "Fonte primária de ingestão de notícias na V2, usada para coleta e atualização de matérias sobre o Corinthians.",
+    note: "Fonte primária de ingestão de notícias, usada para coleta e atualização de matérias sobre o Corinthians.",
   },
   {
     label: "TheSportsDB",
