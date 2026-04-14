@@ -17,6 +17,18 @@ export interface ArticleStory extends NewsItem {
   originalUrl?: string;
   canonicalUrl?: string | null;
   viewCount?: number;
+  breadcrumbs?: Array<{ label: string; href: string }>;
+  sourceContext?: {
+    sourceName: string;
+    sourceUrl: string;
+    originalTitle?: string | null;
+    note: string;
+  };
+  share?: {
+    title: string;
+    description: string;
+    url: string;
+  };
 }
 
 function createArticleSlug(story: Pick<NewsItem, "title">) {
@@ -44,6 +56,21 @@ function toArticleStory(story: NewsItem | FeaturedStory): ArticleStory {
     slug: createArticleSlug(story),
     subheadline,
     body: createBody(story),
+    breadcrumbs: [
+      { label: "Home", href: "/" },
+      { label: story.categoryLabel, href: `/categorias/${story.categoryId}` },
+      { label: story.title, href: `/materia/${createArticleSlug(story)}` },
+    ],
+    sourceContext: {
+      sourceName: story.source,
+      sourceUrl: "#",
+      note: `Texto editorial derivado de cobertura atribuída a ${story.source}.`,
+    },
+    share: {
+      title: story.title,
+      description: story.summary,
+      url: `/materia/${createArticleSlug(story)}`,
+    },
   };
 }
 

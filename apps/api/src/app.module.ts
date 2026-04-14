@@ -2,7 +2,9 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 
+import { AdminModule } from "./modules/admin/admin.module";
 import { ArticlesModule } from "./modules/articles/articles.module";
+import { AuthModule } from "./modules/auth/auth.module";
 import { MatchesModule } from "./modules/matches/matches.module";
 import { PublicModule } from "./modules/public/public.module";
 import { SyncModule } from "./modules/sync/sync.module";
@@ -19,6 +21,8 @@ import { PrismaModule } from "./prisma/prisma.module";
     TeamsModule,
     MatchesModule,
     ViewsModule,
+    AuthModule,
+    AdminModule,
     PublicModule,
     SyncModule,
   ],

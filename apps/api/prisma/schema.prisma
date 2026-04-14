@@ -7,15 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum CategorySlug {
-  profissional
-  feminino
-  base
-  mercado
-  torcida
-  clube
-}
-
 enum MatchStatusTone {
   default
   alert
@@ -29,64 +20,188 @@ enum SyncStatus {
   failed
 }
 
+enum UserRole {
+  admin
+  editor
+}
+
+enum ArticleStatus {
+  draft
+  approved
+  published
+  archived
+}
+
+enum IncomingStoryStatus {
+  pending
+  approved
+  rejected
+}
+
+enum CoveragePhase {
+  pre
+  live
+  post
+}
+
+enum MatchTimelineTeamSide {
+  home
+  away
+  neutral
+}
+
+enum MatchLineupSection {
+  starting
+  bench
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  role         UserRole
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Category {
+  id          String         @id @default(cuid())
+  slug        String         @unique
+  label       String
+  description String
+  sortOrder   Int            @default(0)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  articles    Article[]
+  queueItems  IncomingStory[]
+  pinnedSlots HomeSlot[]
+  pinnedLinks PinnedArticle[]
+}
+
 model ArticleSource {
-  id        String    @id @default(cuid())
+  id        String          @id @default(cuid())
   name      String
   baseUrl   String?
   articles  Article[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  incoming  IncomingStory[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   @@unique([name, baseUrl])
 }
 
-model Article {
-  id           String        @id @default(cuid())
-  externalId   String?
-  slug         String        @unique
-  title        String
-  dek          String
-  summary      String
-  body         Json
-  originalUrl  String        @unique
-  canonicalUrl String?
-  imageUrl     String?
-  imageAlt     String?
-  category     CategorySlug
-  publishedAt  DateTime
-  readTime     String
-  badge        String?
-  badgeLabel   String?
-  tone         MatchStatusTone @default(default)
-  featuredRank Int           @default(0)
-  isActive     Boolean       @default(true)
-  viewCount    Int           @default(0)
-  sourceId     String
-  source       ArticleSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
-  syncedAt     DateTime      @default(now())
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  views        ArticleView[]
+model IncomingStory {
+  id                  String              @id @default(cuid())
+  externalId          String?
+  slug                String
+  title               String
+  summary             String
+  canonicalUrl        String?
+  originalUrl         String              @unique
+  originalTitle       String?
+  imageUrl            String?
+  publishedAt         DateTime
+  fingerprint         String              @unique
+  priority            Int                 @default(0)
+  relevance           Int                 @default(0)
+  status              IncomingStoryStatus @default(pending)
+  sourceId            String
+  source              ArticleSource       @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  suggestedCategoryId String
+  suggestedCategory   Category            @relation(fields: [suggestedCategoryId], references: [id], onDelete: Restrict)
+  articleId           String?
+  article             Article?            @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
-  @@index([category, publishedAt(sort: Desc)])
+  @@index([status, publishedAt(sort: Desc)])
+}
+
+model Article {
+  id                 String         @id @default(cuid())
+  externalId         String?
+  slug               String         @unique
+  title              String
+  dek                String
+  summary            String
+  body               Json
+  originalTitle      String?
+  originalUrl        String         @unique
+  canonicalUrl       String?
+  imageUrl           String?
+  imageAlt           String?
+  categoryId         String
+  category           Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  publishedAt        DateTime?
+  readTime           String
+  badge              String?
+  badgeLabel         String?
+  tone               MatchStatusTone @default(default)
+  featuredRank       Int            @default(0)
+  sortOrder          Int            @default(0)
+  status             ArticleStatus  @default(draft)
+  approvedAt         DateTime?
+  approvedById       String?
+  publishedById      String?
+  unpublishedAt      DateTime?
+  isPinnedHome       Boolean        @default(false)
+  sourceId           String
+  source             ArticleSource  @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  syncedAt           DateTime       @default(now())
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  viewCount          Int            @default(0)
+  views              ArticleView[]
+  queueItems         IncomingStory[]
+  homeSlots          HomeSlot[]
+  pinnedCategories   PinnedArticle[]
+  relatedMatches     MatchCoverage[] @relation("RelatedCoverageArticles")
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([categoryId, publishedAt(sort: Desc)])
   @@index([viewCount(sort: Desc)])
 }
 
+model PinnedArticle {
+  id         String   @id @default(cuid())
+  articleId  String
+  article    Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([articleId, categoryId])
+}
+
+model HomeSlot {
+  id         String   @id @default(cuid())
+  slotKey    String   @unique
+  articleId  String?
+  article    Article? @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+}
+
 model Team {
-  id             String   @id @default(cuid())
-  externalId     String?  @unique
-  name           String
-  normalizedName String   @unique
-  shortName      String?
-  badgeUrl       String?
-  country        String?
-  sport          String?
-  alternateNames Json?
+  id              String   @id @default(cuid())
+  externalId      String?  @unique
+  name            String
+  normalizedName  String   @unique
+  shortName       String?
+  badgeUrl        String?
+  country         String?
+  sport           String?
+  alternateNames  Json?
   sourceUpdatedAt DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  homeMatches    Match[]  @relation("HomeTeam")
-  awayMatches    Match[]  @relation("AwayTeam")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  homeMatches     Match[]  @relation("HomeTeam")
+  awayMatches     Match[]  @relation("AwayTeam")
 }
 
 model Match {
@@ -107,8 +222,67 @@ model Match {
   syncedAt    DateTime        @default(now())
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+  coverage    MatchCoverage?
 
   @@index([kickOff(sort: Asc)])
+}
+
+model MatchCoverage {
+  id               String                 @id @default(cuid())
+  matchId          String                 @unique
+  match            Match                  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  phase            CoveragePhase          @default(pre)
+  scoreHome        Int?
+  scoreAway        Int?
+  stadium          String?
+  competitionStage String?
+  updatedAt        DateTime               @updatedAt
+  createdAt        DateTime               @default(now())
+  timeline         MatchTimelineEvent[]
+  officials        MatchOfficial[]
+  lineups          MatchLineup[]
+  relatedArticles  Article[]              @relation("RelatedCoverageArticles")
+}
+
+model MatchTimelineEvent {
+  id          String                @id @default(cuid())
+  coverageId  String
+  coverage    MatchCoverage         @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  sortOrder   Int                   @default(0)
+  minute      String
+  type        String
+  teamSide    MatchTimelineTeamSide @default(neutral)
+  title       String
+  description String
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([coverageId, sortOrder])
+}
+
+model MatchOfficial {
+  id         String        @id @default(cuid())
+  coverageId String
+  coverage   MatchCoverage @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  role       String
+  name       String
+  sortOrder  Int           @default(0)
+
+  @@index([coverageId, sortOrder])
+}
+
+model MatchLineup {
+  id          String             @id @default(cuid())
+  coverageId  String
+  coverage    MatchCoverage      @relation(fields: [coverageId], references: [id], onDelete: Cascade)
+  teamSide    MatchTimelineTeamSide
+  section     MatchLineupSection
+  playerName  String
+  shirtNumber String?
+  role        String?
+  sortOrder   Int                @default(0)
+
+  @@index([coverageId, teamSide, section, sortOrder])
 }
 
 model ArticleView {
@@ -123,9 +297,24 @@ model ArticleView {
   @@index([createdAt])
 }
 
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+  @@index([entityType, entityId])
+}
+
 model SyncRun {
   id               String     @id @default(cuid())
   jobName          String
+  provider         String?
   status           SyncStatus
   message          String?
   recordsProcessed Int        @default(0)

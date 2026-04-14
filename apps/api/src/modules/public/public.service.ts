@@ -30,6 +30,10 @@ export class PublicService {
     return this.matchesService.getMatches(scope);
   }
 
+  async getMatchDetail(id: string) {
+    return this.matchesService.getMatchDetail(id);
+  }
+
   async incrementArticleView(slug: string, clientKey?: string) {
     return this.viewsService.incrementArticleView(slug, clientKey);
   }

@@ -1,8 +1,9 @@
 import Image from "next/image";
+import Link from "next/link";
 import type { MatchInfo } from "@/content/home";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonStyles } from "@/components/ui/button";
 import { ArrowRightIcon, CalendarIcon, ShieldIcon, TrophyIcon } from "@/components/ui/icons";
 import { getClubCrestUrl } from "@/lib/assets";
 
@@ -112,10 +113,13 @@ export async function MatchCard({ match }: MatchCardProps) {
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-white/8 pt-5">
             <p className="type-body-sm max-w-xl text-ink-secondary">{match.broadcast}</p>
-            <Button variant="secondary">
+            <Link
+              href={match.id ? `/jogos/${match.id}` : "/jogos"}
+              className={buttonStyles({ variant: "secondary" })}
+            >
               Acompanhar cobertura
               <ArrowRightIcon className="size-4" />
-            </Button>
+            </Link>
           </div>
         </div>
       </div>

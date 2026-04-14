@@ -1,6 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { withRetries } from "../../common/with-retries";
+
 type GNewsArticle = {
   title?: string;
   description?: string;
@@ -46,7 +48,14 @@ export class GNewsClient {
     const query = encodeURIComponent('Corinthians OR "Sport Club Corinthians Paulista"');
     const url = `https://gnews.io/api/v4/search?q=${query}&lang=pt&country=br&max=25&sortby=publishedAt&apikey=${this.apiKey}`;
 
-    const response = await fetch(url);
+    const response = await withRetries(
+      () => fetch(url),
+      {
+        onRetry: (attempt, error) => {
+          this.logger.warn(`Retrying GNews fetch (${attempt}). ${error instanceof Error ? error.message : String(error)}`);
+        },
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`GNews request failed with status ${response.status}`);

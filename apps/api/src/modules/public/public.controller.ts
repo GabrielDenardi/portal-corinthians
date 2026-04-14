@@ -32,6 +32,11 @@ export class PublicController {
     return this.publicService.getMatches(scope);
   }
 
+  @Get("public/matches/:id")
+  getMatchDetail(@Param("id") id: string) {
+    return this.publicService.getMatchDetail(id);
+  }
+
   @Post("public/articles/:slug/view")
   incrementArticleView(
     @Param("slug") slug: string,

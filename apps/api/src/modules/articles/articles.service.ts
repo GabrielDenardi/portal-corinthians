@@ -1,6 +1,7 @@
+import { createHash } from "node:crypto";
+
 import type {
   ArticleDetailDTO,
-  CategorySlug,
   HomeCategoryFeedDTO,
   HomeFeedDTO,
   PaginatedArticlesDTO,
@@ -11,6 +12,7 @@ import { MatchStatusTone } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { GNewsClient } from "./gnews.client";
 import {
+  ArticleWithRelations,
   buildArticleBody,
   buildEditorialSummary,
   createArticleSlug,
@@ -22,7 +24,16 @@ import {
   toArticleDetailDTO,
   toArticleListItemDTO,
 } from "./article.helpers";
-import { CATEGORY_META, assertCategorySlug } from "./categories";
+
+const DEFAULT_HOME_SLOTS = [
+  "featured",
+  "highlight-1",
+  "highlight-2",
+  "highlight-3",
+  "spotlight-1",
+  "spotlight-2",
+  "spotlight-3",
+] as const;
 
 @Injectable()
 export class ArticlesService {
@@ -32,80 +43,97 @@ export class ArticlesService {
   ) {}
 
   async getHomeFeed(upcomingMatch: HomeFeedDTO["upcomingMatch"]): Promise<HomeFeedDTO> {
-    const [featuredCandidates, latestRecords, mostReadRecords] = await Promise.all([
+    const [publishedArticles, mostReadRecords, categories, slots] = await Promise.all([
       this.prisma.article.findMany({
-        where: { isActive: true },
-        take: 8,
-        orderBy: [{ featuredRank: "desc" }, { publishedAt: "desc" }],
-        include: { source: true },
+        where: { status: "published" },
+        orderBy: [{ isPinnedHome: "desc" }, { featuredRank: "desc" }, { publishedAt: "desc" }],
+        take: 24,
+        include: { source: true, category: true },
       }),
       this.prisma.article.findMany({
-        where: { isActive: true },
-        take: 6,
-        orderBy: { publishedAt: "desc" },
-        include: { source: true },
-      }),
-      this.prisma.article.findMany({
-        where: { isActive: true },
+        where: { status: "published" },
         take: 3,
         orderBy: [{ viewCount: "desc" }, { publishedAt: "desc" }],
-        include: { source: true },
+        include: { source: true, category: true },
+      }),
+      this.prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+      }),
+      this.prisma.homeSlot.findMany({
+        where: { slotKey: { in: [...DEFAULT_HOME_SLOTS] } },
+        include: {
+          article: {
+            include: { source: true, category: true },
+          },
+        },
       }),
     ]);
 
-    const featured = featuredCandidates[0] ? toArticleListItemDTO(featuredCandidates[0]) : null;
-    const highlights = featuredCandidates.slice(1, 4).map(toArticleListItemDTO);
-    const latest = latestRecords.map(toArticleListItemDTO);
-    const mostRead = mostReadRecords.map(toArticleListItemDTO);
+    const slotEntries: Array<[string, ArticleWithRelations]> = [];
+    for (const slot of slots) {
+      if (slot.article) {
+        slotEntries.push([slot.slotKey, slot.article]);
+      }
+    }
+    const slotMap = new Map<string, ArticleWithRelations>(slotEntries);
 
-    const usedIds = new Set(
-      [featured?.id, ...highlights.map((item) => item.id), ...mostRead.map((item) => item.id)].filter(Boolean),
+    const usedIds = new Set<string>();
+    const featured = selectSlotOrFallback(slotMap.get("featured"), publishedArticles, usedIds, 0);
+    const highlights = [
+      selectSlotOrFallback(slotMap.get("highlight-1"), publishedArticles, usedIds, 1),
+      selectSlotOrFallback(slotMap.get("highlight-2"), publishedArticles, usedIds, 1),
+      selectSlotOrFallback(slotMap.get("highlight-3"), publishedArticles, usedIds, 1),
+    ].filter(Boolean) as ArticleWithRelations[];
+
+    const spotlight = [
+      selectSlotOrFallback(slotMap.get("spotlight-1"), publishedArticles, usedIds, 1),
+      selectSlotOrFallback(slotMap.get("spotlight-2"), publishedArticles, usedIds, 1),
+      selectSlotOrFallback(slotMap.get("spotlight-3"), publishedArticles, usedIds, 1),
+    ].filter(Boolean) as ArticleWithRelations[];
+
+    const latest = publishedArticles.filter((article) => !usedIds.has(article.id)).slice(0, 6);
+    const mostRead = mostReadRecords.map(toArticleListItemDTO);
+    const homeCategories = await Promise.all(
+      categories.map(async (category) => {
+        const items = await this.prisma.article.findMany({
+          where: {
+            status: "published",
+            categoryId: category.id,
+          },
+          orderBy: { publishedAt: "desc" },
+          take: 4,
+          include: { source: true, category: true },
+        });
+
+        return {
+          category: {
+            id: category.id,
+            slug: category.slug,
+            label: category.label,
+            description: category.description,
+          },
+          items: items.map(toArticleListItemDTO),
+        } satisfies HomeCategoryFeedDTO;
+      }),
     );
 
-    const spotlight = featuredCandidates
-      .filter((article) => !usedIds.has(article.id))
-      .slice(0, 3)
-      .map(toArticleListItemDTO);
-
-    const categories = await this.getHomeCategoryFeeds();
-
     return {
-      featured,
-      highlights,
-      latest,
+      featured: featured ? toArticleListItemDTO(featured) : null,
+      highlights: highlights.map(toArticleListItemDTO),
+      latest: latest.map(toArticleListItemDTO),
       mostRead,
-      spotlight,
-      categories,
+      spotlight: spotlight.map(toArticleListItemDTO),
+      categories: homeCategories,
       upcomingMatch,
       updatedAt: new Date().toISOString(),
     };
   }
 
-  async getHomeCategoryFeeds(): Promise<HomeCategoryFeedDTO[]> {
-    const feeds = await Promise.all(
-      Object.keys(CATEGORY_META).map(async (category) => {
-        const slug = category as CategorySlug;
-        const items = await this.prisma.article.findMany({
-          where: { isActive: true, category: slug },
-          take: 4,
-          orderBy: { publishedAt: "desc" },
-          include: { source: true },
-        });
-
-        return {
-          category: CATEGORY_META[slug],
-          items: items.map(toArticleListItemDTO),
-        };
-      }),
-    );
-
-    return feeds;
-  }
-
   async getArticleBySlug(slug: string): Promise<ArticleDetailDTO> {
-    const article = await this.prisma.article.findUnique({
-      where: { slug },
-      include: { source: true },
+    const article = await this.prisma.article.findFirst({
+      where: { slug, status: "published" },
+      include: { source: true, category: true },
     });
 
     if (!article) {
@@ -114,37 +142,49 @@ export class ArticlesService {
 
     const related = await this.prisma.article.findMany({
       where: {
-        isActive: true,
-        category: article.category,
+        status: "published",
+        categoryId: article.categoryId,
         id: { not: article.id },
       },
       take: 3,
       orderBy: { publishedAt: "desc" },
-      include: { source: true },
+      include: { source: true, category: true },
     });
 
     return toArticleDetailDTO(article, related);
   }
 
-  async getCategoryArticles(slugValue: string, page = 1, limit = 12): Promise<PaginatedArticlesDTO> {
-    const slug = assertCategorySlug(slugValue);
+  async getCategoryArticles(slug: string, page = 1, limit = 12): Promise<PaginatedArticlesDTO> {
+    const category = await this.prisma.category.findFirst({
+      where: { slug, isActive: true },
+    });
+
+    if (!category) {
+      throw new NotFoundException("Category not found");
+    }
+
     const skip = Math.max(0, (page - 1) * limit);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.article.findMany({
-        where: { isActive: true, category: slug },
+        where: { status: "published", categoryId: category.id },
         take: limit,
         skip,
         orderBy: { publishedAt: "desc" },
-        include: { source: true },
+        include: { source: true, category: true },
       }),
       this.prisma.article.count({
-        where: { isActive: true, category: slug },
+        where: { status: "published", categoryId: category.id },
       }),
     ]);
 
     return {
-      category: CATEGORY_META[slug],
+      category: {
+        id: category.id,
+        slug: category.slug,
+        label: category.label,
+        description: category.description,
+      },
       items: items.map(toArticleListItemDTO),
       page,
       limit,
@@ -153,13 +193,33 @@ export class ArticlesService {
     };
   }
 
+  async listPublishedArticles() {
+    return this.prisma.article.findMany({
+      where: { status: "published" },
+      orderBy: { publishedAt: "desc" },
+      include: { source: true, category: true },
+    });
+  }
+
   async syncLatestArticles() {
     const liveArticles = await this.gNewsClient.fetchLatestCorinthiansArticles();
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true },
+      select: { id: true, slug: true },
+    });
+
+    const categoryBySlug = new Map(categories.map((category) => [category.slug, category.id]));
     let processed = 0;
 
     for (const liveArticle of liveArticles) {
       const title = normalizeHeadline(liveArticle.title);
-      const category = inferCategory(title, liveArticle.description);
+      const categorySlug = inferCategory(title, liveArticle.description);
+      const categoryId = categoryBySlug.get(categorySlug);
+
+      if (!categoryId) {
+        continue;
+      }
+
       const sourceBaseUrl = tryExtractOrigin(liveArticle.sourceUrl);
       const source = await this.prisma.articleSource.upsert({
         where: {
@@ -175,53 +235,42 @@ export class ArticlesService {
         },
       });
 
-      const body = buildArticleBody(
-        buildEditorialSummary(liveArticle.description, title),
-        category,
-        liveArticle.sourceName,
-      );
-      const badge = getBadgeForCategory(category);
-      const slug = createArticleSlug(title);
-      const existing = await this.prisma.article.findFirst({
+      const fingerprint = createIncomingFingerprint(title, liveArticle.canonicalUrl, liveArticle.sourceName);
+      const existing = await this.prisma.incomingStory.findFirst({
         where: {
           OR: [
             { originalUrl: liveArticle.url },
             { canonicalUrl: liveArticle.canonicalUrl },
-            { slug },
+            { fingerprint },
           ],
         },
       });
 
-      const articleData = {
-        slug,
+      const incomingData = {
+        externalId: liveArticle.url,
+        slug: createArticleSlug(title),
         title,
-        dek: buildEditorialSummary(liveArticle.description, title),
         summary: buildEditorialSummary(liveArticle.description, title),
-        body,
-        originalUrl: liveArticle.url,
         canonicalUrl: liveArticle.canonicalUrl,
+        originalUrl: liveArticle.url,
+        originalTitle: liveArticle.title,
         imageUrl: liveArticle.imageUrl,
-        imageAlt: title,
-        category,
         publishedAt: liveArticle.publishedAt,
-        readTime: estimateReadTime(body),
-        badge: badge.badge,
-        badgeLabel: badge.badgeLabel,
-        tone: toPrismaTone(getToneForCategory(category)),
-        featuredRank: getFeaturedRank(category),
-        isActive: true,
+        fingerprint,
+        priority: categorySlug === "profissional" ? 90 : 60,
+        relevance: categorySlug === "profissional" ? 85 : 65,
         sourceId: source.id,
-        syncedAt: new Date(),
+        suggestedCategoryId: categoryId,
       } as const;
 
       if (existing) {
-        await this.prisma.article.update({
+        await this.prisma.incomingStory.update({
           where: { id: existing.id },
-          data: articleData,
+          data: incomingData,
         });
       } else {
-        await this.prisma.article.create({
-          data: articleData,
+        await this.prisma.incomingStory.create({
+          data: incomingData,
         });
       }
 
@@ -230,15 +279,111 @@ export class ArticlesService {
 
     return processed;
   }
+
+  async createDraftFromIncomingStory(storyId: string) {
+    const story = await this.prisma.incomingStory.findUnique({
+      where: { id: storyId },
+      include: {
+        source: true,
+        suggestedCategory: true,
+      },
+    });
+
+    if (!story) {
+      throw new NotFoundException("Incoming story not found");
+    }
+
+    const existingArticle = story.articleId
+      ? await this.prisma.article.findUnique({
+          where: { id: story.articleId },
+          include: { source: true, category: true },
+        })
+      : null;
+
+    const body = buildArticleBody(story.summary, story.suggestedCategory.slug, story.source.name);
+    const badge = getBadgeForCategory(story.suggestedCategory.slug);
+    const tone = toPrismaTone(getToneForCategory(story.suggestedCategory.slug));
+
+    const article = existingArticle
+      ? await this.prisma.article.update({
+          where: { id: existingArticle.id },
+          data: {
+            title: story.title,
+            dek: story.summary,
+            summary: story.summary,
+            body,
+            originalTitle: story.originalTitle,
+            originalUrl: story.originalUrl,
+            canonicalUrl: story.canonicalUrl,
+            imageUrl: story.imageUrl,
+            imageAlt: story.title,
+            categoryId: story.suggestedCategoryId,
+            readTime: estimateReadTime(body),
+            badge: badge.badge,
+            badgeLabel: badge.badgeLabel,
+            tone,
+            sourceId: story.sourceId,
+            syncedAt: new Date(),
+          },
+          include: { source: true, category: true },
+        })
+      : await this.prisma.article.create({
+          data: {
+            slug: story.slug,
+            title: story.title,
+            dek: story.summary,
+            summary: story.summary,
+            body,
+            originalTitle: story.originalTitle,
+            originalUrl: story.originalUrl,
+            canonicalUrl: story.canonicalUrl,
+            imageUrl: story.imageUrl,
+            imageAlt: story.title,
+            categoryId: story.suggestedCategoryId,
+            readTime: estimateReadTime(body),
+            badge: badge.badge,
+            badgeLabel: badge.badgeLabel,
+            tone,
+            sourceId: story.sourceId,
+          },
+          include: { source: true, category: true },
+        });
+
+    await this.prisma.incomingStory.update({
+      where: { id: story.id },
+      data: {
+        articleId: article.id,
+        status: "approved",
+      },
+    });
+
+    return article;
+  }
 }
 
-function getFeaturedRank(category: CategorySlug) {
-  if (category === "profissional") return 100;
-  if (category === "mercado") return 80;
-  if (category === "feminino") return 70;
-  if (category === "torcida") return 60;
-  if (category === "clube") return 50;
-  return 40;
+function selectSlotOrFallback(
+  slotArticle: ArticleWithRelations | null | undefined,
+  fallback: ArticleWithRelations[],
+  usedIds: Set<string>,
+  fallbackIndex: number,
+) {
+  if (slotArticle && !usedIds.has(slotArticle.id)) {
+    usedIds.add(slotArticle.id);
+    return slotArticle;
+  }
+
+  const candidate = fallback.find((article, index) => index >= fallbackIndex && !usedIds.has(article.id));
+
+  if (!candidate) {
+    return null;
+  }
+
+  usedIds.add(candidate.id);
+  return candidate;
+}
+
+function createIncomingFingerprint(title: string, canonicalUrl: string, sourceName: string) {
+  return createHash("sha256").update(`${title}|${canonicalUrl}|${sourceName}`).digest("hex");
 }
 
 function tryExtractOrigin(value: string) {

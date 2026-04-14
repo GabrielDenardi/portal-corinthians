@@ -78,6 +78,37 @@ export function getFallbackMatchesPageContent() {
   };
 }
 
+export function getFallbackMatchDetail(id: string) {
+  if (upcomingMatch.id && upcomingMatch.id === id) {
+    return {
+      match: {
+        ...upcomingMatch,
+        coveragePhase: "pre" as const,
+        scoreHome: null,
+        scoreAway: null,
+        stadium: upcomingMatch.venue,
+        competitionStage: upcomingMatch.competition,
+        breadcrumbs: [
+          { label: "Home", href: "/" },
+          { label: "Jogos", href: "/jogos" },
+          { label: `${upcomingMatch.homeTeam} x ${upcomingMatch.awayTeam}`, href: `/jogos/${id}` },
+        ],
+        timeline: [],
+        officials: [],
+        lineups: [],
+        relatedArticles: latestStories.slice(0, 3),
+        share: {
+          title: `${upcomingMatch.homeTeam} x ${upcomingMatch.awayTeam}`,
+          description: upcomingMatch.note,
+          url: `/jogos/${id}`,
+        },
+      },
+    };
+  }
+
+  return null;
+}
+
 export function getFallbackArticleStories(): ArticleStory[] {
   return articleStories;
 }

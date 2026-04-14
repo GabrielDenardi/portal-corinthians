@@ -1,4 +1,4 @@
-import type { CategorySlug } from "@portal-corinthians/contracts";
+import type { CategorySlug, HomeSlotKey, UserRole } from "@portal-corinthians/contracts";
 
 import {
   buildArticleBody,
@@ -18,6 +18,8 @@ type FixtureArticleInput = {
   imageUrl?: string;
   publishedAt: string;
   featuredRank?: number;
+  status?: "draft" | "approved" | "published" | "archived";
+  isPinnedHome?: boolean;
 };
 
 function createFixtureArticle(input: FixtureArticleInput) {
@@ -29,9 +31,10 @@ function createFixtureArticle(input: FixtureArticleInput) {
     title: input.title,
     dek: input.dek,
     summary: input.summary,
-    category: input.category,
+    categorySlug: input.category,
     sourceName: input.sourceName,
     originalUrl: input.originalUrl,
+    canonicalUrl: input.originalUrl,
     imageUrl: input.imageUrl ?? null,
     imageAlt: input.title,
     publishedAt: new Date(input.publishedAt),
@@ -41,8 +44,69 @@ function createFixtureArticle(input: FixtureArticleInput) {
     tone: getToneForCategory(input.category),
     featuredRank: input.featuredRank ?? 0,
     body,
+    status: input.status ?? "published",
+    isPinnedHome: input.isPinnedHome ?? false,
   };
 }
+
+export const categoryFixtures = [
+  {
+    slug: "profissional",
+    label: "Profissional",
+    description: "Cobertura do time principal com recorte de campo, bastidor e impacto competitivo.",
+    sortOrder: 10,
+  },
+  {
+    slug: "feminino",
+    label: "Feminino",
+    description: "Noticiário do Corinthians Feminino com leitura tática e operacional.",
+    sortOrder: 20,
+  },
+  {
+    slug: "base",
+    label: "Base",
+    description: "Formação, transição e observação de atletas das categorias de base.",
+    sortOrder: 30,
+  },
+  {
+    slug: "mercado",
+    label: "Mercado",
+    description: "Movimentações de elenco, monitoramento e contexto de janela.",
+    sortOrder: 40,
+  },
+  {
+    slug: "torcida",
+    label: "Torcida",
+    description: "Arquibancada, ingressos e atmosfera de jogo.",
+    sortOrder: 50,
+  },
+  {
+    slug: "clube",
+    label: "Clube",
+    description: "Gestão, operação e rotina institucional do Corinthians.",
+    sortOrder: 60,
+  },
+];
+
+export const userFixtures: Array<{
+  email: string;
+  name: string;
+  role: UserRole;
+  password: string;
+}> = [
+  {
+    email: "admin@portalcorinthians.local",
+    name: "Admin Portal",
+    role: "admin",
+    password: "portal123",
+  },
+  {
+    email: "editor@portalcorinthians.local",
+    name: "Editor Portal",
+    role: "editor",
+    password: "portal123",
+  },
+];
 
 export const articleFixtures = [
   createFixtureArticle({
@@ -55,6 +119,7 @@ export const articleFixtures = [
     originalUrl: "https://agencia.corinthians.com.br/ultimas/corinthians-ajustes-classico",
     publishedAt: "2026-04-08T18:10:00.000Z",
     featuredRank: 100,
+    isPinnedHome: true,
   }),
   createFixtureArticle({
     title: "Corinthians Feminino administra posse alta e amplia repertório em bola parada",
@@ -135,6 +200,33 @@ export const articleFixtures = [
   }),
 ];
 
+export const incomingStoryFixtures = [
+  {
+    title: "Corinthians monitora recuperação de meia e deve definir retorno no treino tático",
+    summary: "Atualização médica e de carga pode mexer no plano do pré-jogo.",
+    sourceName: "GNews",
+    originalUrl: "https://gnews.io/portal-corinthians/meia-retorno-treino-tatico",
+    originalTitle: "Corinthians monitora recuperação de meia",
+    canonicalUrl: "https://gnews.io/portal-corinthians/meia-retorno-treino-tatico",
+    publishedAt: "2026-04-09T09:00:00.000Z",
+    suggestedCategorySlug: "profissional",
+    priority: 90,
+    relevance: 85,
+  },
+  {
+    title: "Corinthians acelera venda de ingressos para clássico e ativa operação especial",
+    summary: "Arena prepara reforço de acesso e orientação de portões.",
+    sourceName: "GNews",
+    originalUrl: "https://gnews.io/portal-corinthians/operacao-especial-ingressos",
+    originalTitle: "Operação especial para clássico",
+    canonicalUrl: "https://gnews.io/portal-corinthians/operacao-especial-ingressos",
+    publishedAt: "2026-04-09T10:15:00.000Z",
+    suggestedCategorySlug: "torcida",
+    priority: 70,
+    relevance: 72,
+  },
+];
+
 export const teamFixtures = [
   {
     externalId: "134615",
@@ -181,6 +273,32 @@ export const matchFixtures = [
     statusTone: "alert",
     homeTeamNormalizedName: "corinthians",
     awayTeamNormalizedName: "palmeiras",
+    coverage: {
+      phase: "pre",
+      scoreHome: null,
+      scoreAway: null,
+      stadium: "Neo Química Arena",
+      competitionStage: "Temporada regular",
+      officials: [
+        { role: "Árbitro", name: "Rafael Klein" },
+        { role: "VAR", name: "Daniel Nobre Bins" },
+      ],
+      lineups: [
+        { teamSide: "home", section: "starting", playerName: "Cássio", shirtNumber: "12", role: "GOL" },
+        { teamSide: "home", section: "starting", playerName: "Fagner", shirtNumber: "23", role: "LD" },
+        { teamSide: "away", section: "starting", playerName: "Weverton", shirtNumber: "21", role: "GOL" },
+        { teamSide: "away", section: "starting", playerName: "Mayke", shirtNumber: "12", role: "LD" },
+      ],
+      timeline: [
+        {
+          minute: "Pré",
+          type: "context",
+          teamSide: "neutral",
+          title: "Escalação provável",
+          description: "Comissão mantém base do último treino e monitora condição do meio-campo.",
+        },
+      ],
+    },
   },
   {
     externalId: "fixture-recent-001",
@@ -194,5 +312,43 @@ export const matchFixtures = [
     statusTone: "warning",
     homeTeamNormalizedName: "sao-paulo",
     awayTeamNormalizedName: "corinthians",
+    coverage: {
+      phase: "post",
+      scoreHome: 1,
+      scoreAway: 1,
+      stadium: "MorumBIS",
+      competitionStage: "Temporada regular",
+      officials: [{ role: "Árbitro", name: "Anderson Daronco" }],
+      lineups: [],
+      timeline: [
+        {
+          minute: "12'",
+          type: "goal",
+          teamSide: "away",
+          title: "Corinthians abre o placar",
+          description: "Ataque rápido pela esquerda termina em finalização na pequena área.",
+        },
+        {
+          minute: "71'",
+          type: "goal",
+          teamSide: "home",
+          title: "São Paulo empata",
+          description: "Pressão na bola parada resulta no empate do mandante.",
+        },
+      ],
+    },
   },
+];
+
+export const homeSlotFixtures: Array<{
+  slotKey: HomeSlotKey;
+  articleSlug?: string;
+}> = [
+  { slotKey: "featured", articleSlug: articleFixtures[0]?.slug },
+  { slotKey: "highlight-1", articleSlug: articleFixtures[1]?.slug },
+  { slotKey: "highlight-2", articleSlug: articleFixtures[2]?.slug },
+  { slotKey: "highlight-3", articleSlug: articleFixtures[3]?.slug },
+  { slotKey: "spotlight-1", articleSlug: articleFixtures[4]?.slug },
+  { slotKey: "spotlight-2", articleSlug: articleFixtures[5]?.slug },
+  { slotKey: "spotlight-3", articleSlug: articleFixtures[6]?.slug },
 ];

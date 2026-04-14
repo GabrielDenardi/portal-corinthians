@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { withRetries } from "../../common/with-retries";
 import type { ScheduleMatchRecord } from "./match-source.types";
 
 type EspnTeam = {
@@ -90,9 +91,17 @@ export class EspnFixturesClient {
   }
 
   private async fetchPage(path: string) {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      headers: ESPN_BROWSER_HEADERS,
-    });
+    const response = await withRetries(
+      () =>
+        fetch(`${this.baseUrl}${path}`, {
+          headers: ESPN_BROWSER_HEADERS,
+        }),
+      {
+        onRetry: (attempt, error) => {
+          this.logger.warn(`Retrying ESPN request (${attempt}). ${error instanceof Error ? error.message : String(error)}`);
+        },
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`ESPN request failed with status ${response.status}`);

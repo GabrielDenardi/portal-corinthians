@@ -2,19 +2,19 @@ import type {
   ArticleDetailDTO,
   ArticleListItemDTO,
   BadgeVariant,
+  BreadcrumbDTO,
+  CategoryDTO,
   CategorySlug,
   NewsTone,
+  ShareMetadataDTO,
+  SourceContextDTO,
 } from "@portal-corinthians/contracts";
-import { Article, ArticleSource, MatchStatusTone, Prisma } from "@prisma/client";
+import { Article, ArticleSource, Category, MatchStatusTone, Prisma } from "@prisma/client";
 
-import { CATEGORY_META, inferCategoryFromText } from "./categories";
+import { inferCategoryFromText } from "./categories";
 
-export type ArticleWithSource = Prisma.ArticleGetPayload<{
-  include: { source: true };
-}>;
-
-export type ArticleDetailRecord = Prisma.ArticleGetPayload<{
-  include: { source: true };
+export type ArticleWithRelations = Prisma.ArticleGetPayload<{
+  include: { source: true; category: true };
 }>;
 
 export function createArticleSlug(title: string) {
@@ -86,9 +86,11 @@ export function getBadgeForCategory(category: CategorySlug): {
 }
 
 export function buildArticleBody(summary: string, category: CategorySlug, sourceName: string) {
+  const label = toCategoryLabel(category).toLowerCase();
+
   return [
     `${summary} O recorte editorial do Portal Corinthians reorganiza a apuração para leitura rápida, priorizando contexto, hierarquia visual e entendimento imediato do torcedor.`,
-    `Dentro da editoria ${CATEGORY_META[category].label.toLowerCase()}, a matéria cruza impacto esportivo, bastidor e consequência prática para o dia a dia do clube, sem republicar integralmente o texto de origem.`,
+    `Dentro da editoria ${label}, a matéria cruza impacto esportivo, bastidor e consequência prática para o dia a dia do clube, sem republicar integralmente o texto de origem.`,
     `A fonte original permanece creditada em destaque. Quando houver novas informações, a atualização editorial deve ajustar título, resumo e distribuição na home preservando clareza e atribuição à fonte ${sourceName}.`,
   ];
 }
@@ -112,17 +114,28 @@ export function articleToneToNewsTone(tone: MatchStatusTone): NewsTone {
   return matchStatusToneToNewsTone(tone);
 }
 
-export function toArticleListItemDTO(article: Article & { source: ArticleSource }): ArticleListItemDTO {
+export function toCategoryDTO(category: Category): CategoryDTO {
+  return {
+    id: category.id,
+    slug: category.slug,
+    label: category.label,
+    description: category.description,
+  };
+}
+
+export function toArticleListItemDTO(
+  article: Article & { source: ArticleSource; category: Category },
+): ArticleListItemDTO {
   return {
     id: article.id,
     slug: article.slug,
     title: article.title,
     dek: article.dek,
     summary: article.summary,
-    category: CATEGORY_META[article.category],
+    category: toCategoryDTO(article.category),
     sourceName: article.source.name,
     sourceUrl: article.originalUrl,
-    publishedAt: article.publishedAt.toISOString(),
+    publishedAt: (article.publishedAt ?? article.updatedAt).toISOString(),
     readTime: article.readTime,
     imageUrl: article.imageUrl,
     imageAlt: article.imageAlt,
@@ -133,11 +146,49 @@ export function toArticleListItemDTO(article: Article & { source: ArticleSource 
   };
 }
 
-export function toArticleDetailDTO(article: ArticleDetailRecord, related: ArticleWithSource[]): ArticleDetailDTO {
+export function createArticleBreadcrumbs(article: ArticleWithRelations): BreadcrumbDTO[] {
+  return [
+    { label: "Home", href: "/" },
+    { label: article.category.label, href: `/categorias/${article.category.slug}` },
+    { label: article.title, href: `/materia/${article.slug}` },
+  ];
+}
+
+export function createSourceContext(article: ArticleWithRelations): SourceContextDTO {
+  return {
+    sourceName: article.source.name,
+    sourceUrl: article.originalUrl,
+    originalTitle: article.originalTitle,
+    note: `Texto reorganizado editorialmente com atribuição visível à fonte ${article.source.name}.`,
+  };
+}
+
+export function createShareMetadata(article: ArticleWithRelations): ShareMetadataDTO {
+  return {
+    title: article.title,
+    description: article.summary,
+    url: `/materia/${article.slug}`,
+  };
+}
+
+export function toArticleDetailDTO(article: ArticleWithRelations, related: ArticleWithRelations[]): ArticleDetailDTO {
   return {
     ...toArticleListItemDTO(article),
     body: Array.isArray(article.body) ? (article.body as string[]) : [],
     canonicalUrl: article.canonicalUrl,
     related: related.map(toArticleListItemDTO),
+    breadcrumbs: createArticleBreadcrumbs(article),
+    sourceContext: createSourceContext(article),
+    share: createShareMetadata(article),
   };
+}
+
+function toCategoryLabel(category: CategorySlug) {
+  if (category === "profissional") return "Profissional";
+  if (category === "feminino") return "Feminino";
+  if (category === "base") return "Base";
+  if (category === "mercado") return "Mercado";
+  if (category === "torcida") return "Torcida";
+  if (category === "clube") return "Clube";
+  return category;
 }

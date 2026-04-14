@@ -1,6 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { withRetries } from "../../common/with-retries";
 import type { ScheduleMatchRecord } from "../matches/match-source.types";
 import { isCorinthiansMatchup, isCorinthiansTeamName, normalizeTeamName } from "./team-identity";
 
@@ -60,7 +61,16 @@ export class SportsDbClient {
   }
 
   private async fetchJson<T>(path: string) {
-    const response = await fetch(`${this.baseUrl}${path}`);
+    const response = await withRetries(
+      () => fetch(`${this.baseUrl}${path}`),
+      {
+        onRetry: (attempt, error) => {
+          this.logger.warn(
+            `Retrying TheSportsDB request (${attempt}). ${error instanceof Error ? error.message : String(error)}`,
+          );
+        },
+      },
+    );
 
     if (!response.ok) {
       throw new Error(`TheSportsDB request failed with status ${response.status}`);

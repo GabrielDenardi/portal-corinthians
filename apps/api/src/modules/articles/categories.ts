@@ -1,37 +1,4 @@
-import type { CategoryDTO, CategorySlug } from "@portal-corinthians/contracts";
-
-export const CATEGORY_META: Record<CategorySlug, CategoryDTO> = {
-  profissional: {
-    slug: "profissional",
-    label: "Profissional",
-    description: "Treinos, jogo, bastidor e leitura tática do elenco principal.",
-  },
-  feminino: {
-    slug: "feminino",
-    label: "Feminino",
-    description: "Cobertura do time que sustenta regularidade e protagonismo.",
-  },
-  base: {
-    slug: "base",
-    label: "Base",
-    description: "Talentos em formação, desempenho e próximos passos no clube.",
-  },
-  mercado: {
-    slug: "mercado",
-    label: "Mercado",
-    description: "Entradas, saídas, sondagens e impacto na montagem do elenco.",
-  },
-  torcida: {
-    slug: "torcida",
-    label: "Torcida",
-    description: "Arquibancada, ambiente de jogo e temperatura do noticiário.",
-  },
-  clube: {
-    slug: "clube",
-    label: "Clube",
-    description: "Gestão, bastidores institucionais e agenda do Parque São Jorge.",
-  },
-};
+import type { CategorySlug } from "@portal-corinthians/contracts";
 
 const CATEGORY_KEYWORDS: Array<{ category: CategorySlug; keywords: string[] }> = [
   { category: "feminino", keywords: ["feminino", "brabas"] },
@@ -52,12 +19,4 @@ export function inferCategoryFromText(input: string): CategorySlug {
   );
 
   return matched?.category ?? "profissional";
-}
-
-export function assertCategorySlug(value: string): CategorySlug {
-  if (value in CATEGORY_META) {
-    return value as CategorySlug;
-  }
-
-  throw new Error(`Unsupported category slug: ${value}`);
 }

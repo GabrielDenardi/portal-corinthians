@@ -2,12 +2,7 @@ export type NewsTone = "default" | "alert" | "success" | "warning";
 
 export type NewsCategoryId =
   | "todas"
-  | "profissional"
-  | "feminino"
-  | "base"
-  | "mercado"
-  | "torcida"
-  | "clube";
+  | string;
 
 export interface NavItem {
   label: string;
@@ -49,6 +44,7 @@ export interface FeaturedStory extends NewsItem {
 }
 
 export interface MatchInfo {
+  id?: string;
   competition: string;
   round: string;
   homeTeam: string;
@@ -61,6 +57,9 @@ export interface MatchInfo {
   note: string;
   statusLabel: string;
   statusTone: NewsTone;
+  coveragePhase?: "pre" | "live" | "post";
+  scoreHome?: number | null;
+  scoreAway?: number | null;
 }
 
 export const siteNavigation: NavItem[] = [
@@ -371,6 +370,7 @@ export const spotlightStories: NewsItem[] = [
 ];
 
 export const upcomingMatch: MatchInfo = {
+  id: "fixture-next-001",
   competition: "Brasileirão",
   round: "8ª rodada",
   homeTeam: "Corinthians",

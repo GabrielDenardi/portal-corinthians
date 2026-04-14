@@ -4,6 +4,7 @@ import type {
   CategoryDTO,
   HomeFeedDTO,
   MatchDTO,
+  MatchDetailDTO,
   PaginatedArticlesDTO,
 } from "@portal-corinthians/contracts";
 
@@ -15,6 +16,17 @@ import type {
   NewsCategoryId,
   NewsItem,
 } from "@/content/home";
+
+export interface MatchDetailViewModel extends MatchInfo {
+  breadcrumbs: Array<{ label: string; href: string }>;
+  timeline: MatchDetailDTO["timeline"];
+  officials: MatchDetailDTO["officials"];
+  lineups: MatchDetailDTO["lineups"];
+  relatedArticles: NewsItem[];
+  share: MatchDetailDTO["share"];
+  stadium?: string | null;
+  competitionStage?: string | null;
+}
 
 function formatPublishedAt(value: string) {
   const date = new Date(value);
@@ -82,6 +94,9 @@ export function mapArticleDetailToStory(article: ArticleDetailDTO): ArticleStory
     originalUrl: article.sourceUrl,
     canonicalUrl: article.canonicalUrl,
     viewCount: article.viewCount,
+    breadcrumbs: article.breadcrumbs,
+    sourceContext: article.sourceContext,
+    share: article.share,
   };
 }
 
@@ -95,6 +110,7 @@ export function mapArticleToFeaturedStory(article: ArticleListItemDTO): Featured
 
 export function mapMatchToMatchInfo(match: MatchDTO): MatchInfo {
   return {
+    id: match.id,
     competition: match.competition,
     round: match.round,
     homeTeam: match.homeTeam.name,
@@ -110,6 +126,23 @@ export function mapMatchToMatchInfo(match: MatchDTO): MatchInfo {
   };
 }
 
+export function mapMatchDetailToViewModel(match: MatchDetailDTO): MatchDetailViewModel {
+  return {
+    ...mapMatchToMatchInfo(match),
+    coveragePhase: match.coveragePhase,
+    scoreHome: match.scoreHome ?? null,
+    scoreAway: match.scoreAway ?? null,
+    breadcrumbs: match.breadcrumbs,
+    timeline: match.timeline,
+    officials: match.officials,
+    lineups: match.lineups,
+    relatedArticles: match.relatedArticles.map(mapArticleListItemToNewsItem),
+    share: match.share,
+    stadium: match.stadium,
+    competitionStage: match.competitionStage,
+  };
+}
+
 function getCategoryItems(homeFeed: HomeFeedDTO, slug: Exclude<NewsCategoryId, "todas">) {
   return (
     homeFeed.categories.find((entry) => entry.category.slug === slug)?.items.map(mapArticleListItemToNewsItem) ?? []
@@ -117,6 +150,8 @@ function getCategoryItems(homeFeed: HomeFeedDTO, slug: Exclude<NewsCategoryId, "
 }
 
 export function mapHomeFeedToViewModel(homeFeed: HomeFeedDTO) {
+  const categoryItems = homeFeed.categories.map(({ category }) => mapCategory(category));
+
   return {
     featuredStory: homeFeed.featured ? mapArticleToFeaturedStory(homeFeed.featured) : null,
     secondaryHighlights: homeFeed.highlights.map(mapArticleListItemToNewsItem),
@@ -129,21 +164,19 @@ export function mapHomeFeedToViewModel(homeFeed: HomeFeedDTO) {
         label: "Todas",
         description: "Panorama geral com os movimentos que puxam o dia.",
       },
-      ...homeFeed.categories.map(({ category }) => mapCategory(category)),
+      ...categoryItems,
     ],
-    newsByCategory: {
-      todas: [
-        ...(homeFeed.featured ? [mapArticleListItemToNewsItem(homeFeed.featured)] : []),
-        ...homeFeed.highlights.map(mapArticleListItemToNewsItem),
-        ...homeFeed.latest.map(mapArticleListItemToNewsItem),
-      ].slice(0, 6),
-      profissional: getCategoryItems(homeFeed, "profissional"),
-      feminino: getCategoryItems(homeFeed, "feminino"),
-      base: getCategoryItems(homeFeed, "base"),
-      mercado: getCategoryItems(homeFeed, "mercado"),
-      torcida: getCategoryItems(homeFeed, "torcida"),
-      clube: getCategoryItems(homeFeed, "clube"),
-    },
+    newsByCategory: Object.fromEntries([
+      [
+        "todas",
+        [
+          ...(homeFeed.featured ? [mapArticleListItemToNewsItem(homeFeed.featured)] : []),
+          ...homeFeed.highlights.map(mapArticleListItemToNewsItem),
+          ...homeFeed.latest.map(mapArticleListItemToNewsItem),
+        ].slice(0, 6),
+      ],
+      ...categoryItems.map((category) => [category.id, getCategoryItems(homeFeed, category.id)]),
+    ]) as Record<NewsCategoryId, NewsItem[]>,
     upcomingMatch: homeFeed.upcomingMatch ? mapMatchToMatchInfo(homeFeed.upcomingMatch) : null,
   };
 }

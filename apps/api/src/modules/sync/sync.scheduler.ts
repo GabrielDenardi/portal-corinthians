@@ -17,16 +17,16 @@ export class SyncSchedulerService {
 
   @Cron("*/15 * * * *")
   async syncArticlesJob() {
-    await this.syncService.runJob("articles", () => this.articlesService.syncLatestArticles());
+    await this.syncService.runJob("articles", "gnews", () => this.articlesService.syncLatestArticles());
   }
 
   @Cron("*/30 * * * *")
   async syncMatchesJob() {
-    await this.syncService.runJob("matches", () => this.matchesService.syncSchedule());
+    await this.syncService.runJob("matches", "schedule", () => this.matchesService.syncSchedule());
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async syncTeamsJob() {
-    await this.syncService.runJob("teams", () => this.teamsService.refreshTrackedTeams());
+    await this.syncService.runJob("teams", "sportsdb", () => this.teamsService.refreshTrackedTeams());
   }
 }

@@ -6,10 +6,11 @@ import { PrismaService } from "../../prisma/prisma.service";
 export class SyncService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async runJob(jobName: string, runner: () => Promise<number>) {
+  async runJob(jobName: string, provider: string, runner: () => Promise<number>) {
     const syncRun = await this.prisma.syncRun.create({
       data: {
         jobName,
+        provider,
         status: "running",
       },
     });

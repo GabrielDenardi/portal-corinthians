@@ -1,16 +1,13 @@
-import type { MatchDTO, MatchScope, NewsTone } from "@portal-corinthians/contracts";
-import { Injectable, Logger } from "@nestjs/common";
-import { MatchStatusTone, Prisma } from "@prisma/client";
+import type { MatchDTO, MatchDetailDTO, MatchScope, NewsTone } from "@portal-corinthians/contracts";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { CoveragePhase, MatchStatusTone, Prisma } from "@prisma/client";
 
 import { PrismaService } from "../../prisma/prisma.service";
+import { toArticleListItemDTO } from "../articles/article.helpers";
 import { SportsDbClient } from "../teams/sportsdb.client";
 import { TeamsService } from "../teams/teams.service";
 import { getCorinthiansOpponent, isCorinthiansMatchup } from "../teams/team-identity";
 import { EspnFixturesClient } from "./espn-fixtures.client";
-
-type MatchRecord = Prisma.MatchGetPayload<{
-  include: { homeTeam: true; awayTeam: true };
-}>;
 
 @Injectable()
 export class MatchesService {
@@ -34,18 +31,20 @@ export class MatchesService {
     for (const event of validEvents) {
       const [homeTeam, awayTeam] = await Promise.all([
         this.teamsService.upsertTeam({
+          externalId: event.homeTeamExternalId ?? null,
           name: event.homeTeamName,
           shortName: event.homeTeamShortName,
           badgeUrl: event.homeTeamBadgeUrl,
         }),
         this.teamsService.upsertTeam({
+          externalId: event.awayTeamExternalId ?? null,
           name: event.awayTeamName,
           shortName: event.awayTeamShortName,
           badgeUrl: event.awayTeamBadgeUrl,
         }),
       ]);
 
-      await this.prisma.match.upsert({
+      const match = await this.prisma.match.upsert({
         where: { externalId: event.externalId },
         update: {
           competition: event.competition,
@@ -72,6 +71,16 @@ export class MatchesService {
           statusTone: toPrismaTone(event.statusTone),
           homeTeamId: homeTeam.id,
           awayTeamId: awayTeam.id,
+        },
+      });
+
+      await this.prisma.matchCoverage.upsert({
+        where: { matchId: match.id },
+        update: {},
+        create: {
+          matchId: match.id,
+          phase: CoveragePhase.pre,
+          stadium: match.venue,
         },
       });
 
@@ -124,6 +133,186 @@ export class MatchesService {
       .map(toMatchDTO);
   }
 
+  async getMatchDetail(id: string): Promise<MatchDetailDTO> {
+    const match = await this.findMatchForPublicRoute(id);
+
+    if (!match) {
+      throw new NotFoundException("Match not found");
+    }
+
+    const coverage = match.coverage;
+
+    return {
+      ...toMatchDTO(match),
+      coveragePhase: coverage?.phase ?? "pre",
+      scoreHome: coverage?.scoreHome ?? null,
+      scoreAway: coverage?.scoreAway ?? null,
+      stadium: coverage?.stadium ?? match.venue,
+      competitionStage: coverage?.competitionStage ?? null,
+      officials:
+        coverage?.officials.map((official) => ({
+          role: official.role,
+          name: official.name,
+        })) ?? [],
+      lineups:
+        coverage?.lineups.map((entry) => ({
+          id: entry.id,
+          teamSide: entry.teamSide === "neutral" ? "home" : entry.teamSide,
+          section: entry.section,
+          playerName: entry.playerName,
+          shirtNumber: entry.shirtNumber,
+          role: entry.role,
+        })) ?? [],
+      timeline:
+        coverage?.timeline.map((event) => ({
+          id: event.id,
+          minute: event.minute,
+          type: event.type,
+          teamSide: event.teamSide,
+          title: event.title,
+          description: event.description,
+        })) ?? [],
+      relatedArticles: coverage?.relatedArticles.map(toArticleListItemDTO) ?? [],
+      breadcrumbs: [
+        { label: "Home", href: "/" },
+        { label: "Jogos", href: "/jogos" },
+        { label: `${match.homeTeam.name} x ${match.awayTeam.name}`, href: `/jogos/${toPublicMatchId(match)}` },
+      ],
+      share: {
+        title: `${match.homeTeam.name} x ${match.awayTeam.name}`,
+        description: match.note,
+        url: `/jogos/${toPublicMatchId(match)}`,
+      },
+    };
+  }
+
+  async listManagedMatches() {
+    return this.prisma.match.findMany({
+      orderBy: { kickOff: "desc" },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        coverage: {
+          include: {
+            timeline: { orderBy: { sortOrder: "asc" } },
+            officials: { orderBy: { sortOrder: "asc" } },
+            lineups: { orderBy: { sortOrder: "asc" } },
+          },
+        },
+      },
+    });
+  }
+
+  async updateMatchCoverage(
+    matchId: string,
+    input: {
+      phase: "pre" | "live" | "post";
+      scoreHome?: number | null;
+      scoreAway?: number | null;
+      stadium?: string | null;
+      competitionStage?: string | null;
+      officials: Array<{ role: string; name: string }>;
+      lineups: Array<{
+        teamSide: "home" | "away";
+        section: "starting" | "bench";
+        playerName: string;
+        shirtNumber?: string | null;
+        role?: string | null;
+      }>;
+      timeline: Array<{
+        minute: string;
+        type: string;
+        teamSide: "home" | "away" | "neutral";
+        title: string;
+        description: string;
+      }>;
+      relatedArticleIds?: string[];
+    },
+  ) {
+    const match = await this.prisma.match.findUnique({
+      where: { id: matchId },
+    });
+
+    if (!match) {
+      throw new NotFoundException("Match not found");
+    }
+
+    const coverage = await this.prisma.matchCoverage.upsert({
+      where: { matchId },
+      update: {
+        phase: input.phase,
+        scoreHome: input.scoreHome ?? null,
+        scoreAway: input.scoreAway ?? null,
+        stadium: input.stadium ?? match.venue,
+        competitionStage: input.competitionStage ?? null,
+      },
+      create: {
+        matchId,
+        phase: input.phase,
+        scoreHome: input.scoreHome ?? null,
+        scoreAway: input.scoreAway ?? null,
+        stadium: input.stadium ?? match.venue,
+        competitionStage: input.competitionStage ?? null,
+      },
+    });
+
+    await this.prisma.matchTimelineEvent.deleteMany({ where: { coverageId: coverage.id } });
+    await this.prisma.matchOfficial.deleteMany({ where: { coverageId: coverage.id } });
+    await this.prisma.matchLineup.deleteMany({ where: { coverageId: coverage.id } });
+
+    for (const [index, official] of input.officials.entries()) {
+      await this.prisma.matchOfficial.create({
+        data: {
+          coverageId: coverage.id,
+          sortOrder: index,
+          role: official.role,
+          name: official.name,
+        },
+      });
+    }
+
+    for (const [index, lineup] of input.lineups.entries()) {
+      await this.prisma.matchLineup.create({
+        data: {
+          coverageId: coverage.id,
+          sortOrder: index,
+          teamSide: lineup.teamSide,
+          section: lineup.section,
+          playerName: lineup.playerName,
+          shirtNumber: lineup.shirtNumber,
+          role: lineup.role,
+        },
+      });
+    }
+
+    for (const [index, event] of input.timeline.entries()) {
+      await this.prisma.matchTimelineEvent.create({
+        data: {
+          coverageId: coverage.id,
+          sortOrder: index,
+          minute: event.minute,
+          type: event.type,
+          teamSide: event.teamSide,
+          title: event.title,
+          description: event.description,
+        },
+      });
+    }
+
+    if (input.relatedArticleIds) {
+      await this.prisma.matchCoverage.update({
+        where: { id: coverage.id },
+        data: {
+          relatedArticles: {
+            set: input.relatedArticleIds.map((id) => ({ id })),
+          },
+        },
+      });
+    }
+
+    return this.getMatchDetail(matchId);
+  }
+
   private async fetchScheduleFromPrimarySource() {
     try {
       const espnEvents = await this.espnFixturesClient.fetchCorinthiansSchedule();
@@ -145,6 +334,53 @@ export class MatchesService {
       source: "sportsdb" as const,
       events: await this.sportsDbClient.fetchCorinthiansSchedule(),
     };
+  }
+
+  private async findMatchForPublicRoute(idOrSlug: string) {
+    const byId = await this.prisma.match.findUnique({
+      where: { id: idOrSlug },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        coverage: {
+          include: {
+            timeline: { orderBy: { sortOrder: "asc" } },
+            officials: { orderBy: { sortOrder: "asc" } },
+            lineups: { orderBy: { sortOrder: "asc" } },
+            relatedArticles: {
+              where: { status: "published" },
+              include: { source: true, category: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (byId) {
+      return byId;
+    }
+
+    const matches = await this.prisma.match.findMany({
+      take: 200,
+      orderBy: { kickOff: "desc" },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+        coverage: {
+          include: {
+            timeline: { orderBy: { sortOrder: "asc" } },
+            officials: { orderBy: { sortOrder: "asc" } },
+            lineups: { orderBy: { sortOrder: "asc" } },
+            relatedArticles: {
+              where: { status: "published" },
+              include: { source: true, category: true },
+            },
+          },
+        },
+      },
+    });
+
+    return matches.find((match) => toPublicMatchId(match) === idOrSlug) ?? null;
   }
 
   private async pruneStaleMatches(syncedExternalIds: Set<string>) {
@@ -189,9 +425,13 @@ export class MatchesService {
   }
 }
 
-export function toMatchDTO(match: MatchRecord): MatchDTO {
+export function toMatchDTO(
+  match: Prisma.MatchGetPayload<{
+    include: { homeTeam: true; awayTeam: true };
+  }>,
+): MatchDTO {
   return {
-    id: match.id,
+    id: toPublicMatchId(match),
     competition: match.competition,
     round: match.round,
     homeTeam: {
@@ -215,6 +455,15 @@ export function toMatchDTO(match: MatchRecord): MatchDTO {
   };
 }
 
+function toPublicMatchId(
+  match: Prisma.MatchGetPayload<{
+    include: { homeTeam: true; awayTeam: true };
+  }>,
+) {
+  const date = match.kickOff.toISOString().slice(0, 10);
+  return `${date}-${slugify(match.homeTeam.name)}-vs-${slugify(match.awayTeam.name)}`;
+}
+
 function formatKickOff(value: Date) {
   const formatted = new Intl.DateTimeFormat("pt-BR", {
     weekday: "long",
@@ -229,6 +478,15 @@ function formatKickOff(value: Date) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function buildMatchNote(homeTeam: string, awayTeam: string) {
